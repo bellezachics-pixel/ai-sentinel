@@ -57,7 +57,7 @@ export interface AuthResponse {
   expires_in: number;
 }
 
-function getToken(): string | null {
+export function getToken(): string | null {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("ai_sentinel_token");
 }
