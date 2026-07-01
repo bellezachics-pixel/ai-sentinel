@@ -4,21 +4,35 @@ import { useState } from "react";
 import Sidebar, { type ViewType } from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 import Dashboard from "@/components/dashboard/Dashboard";
-import URLScanner from "@/components/analysis/URLScanner";
+import UniversalScan from "@/components/analysis/UniversalScan";
+import InternetAnalyzer from "@/components/analysis/InternetAnalyzer";
 import EmailAnalyzer from "@/components/analysis/EmailAnalyzer";
+import PhoneSecurity from "@/components/analysis/PhoneSecurity";
+import MessageAnalyzer from "@/components/analysis/MessageAnalyzer";
+import IdentityCheck from "@/components/analysis/IdentityCheck";
+import FileAnalyzer from "@/components/analysis/FileAnalyzer";
+import IADetector from "@/components/analysis/IADetector";
+import InfoVerifier from "@/components/analysis/InfoVerifier";
 import QRScanner from "@/components/analysis/QRScanner";
 import NetworkMonitor from "@/components/analysis/NetworkMonitor";
-import DeepfakeDetector from "@/components/analysis/DeepfakeDetector";
-import ThreatIntel from "@/components/analysis/ThreatIntel";
+import SentinelChat from "@/components/analysis/SentinelChat";
+import PremiumFeatures from "@/components/analysis/PremiumFeatures";
 
 const VIEW_TITLES: Record<ViewType, string> = {
   dashboard: "Panel de Control",
-  "url-scanner": "Escáner de URLs",
-  "email-analyzer": "Analizador de Email",
-  "qr-scanner": "Escáner de Códigos QR",
-  "network-monitor": "Monitor de Red",
-  "deepfake-detector": "Detector de Deepfakes",
-  "threat-intel": "Inteligencia de Amenazas",
+  "universal-scan": "Analizar Cualquier Cosa",
+  internet: "Seguridad en Internet",
+  correos: "Analizador de Correos",
+  telefono: "Seguridad del Telefono",
+  mensajes: "Analizador de Mensajes",
+  identidad: "Identidad Digital",
+  archivos: "Analizador de Archivos",
+  "ia-detector": "Detector de IA",
+  informacion: "Verificador de Informacion",
+  "qr-scanner": "Escaner de Codigos QR",
+  red: "Monitor de Red",
+  "sentinel-ia": "Sentinel IA",
+  premium: "Funciones Premium",
 };
 
 export default function Home() {
@@ -28,18 +42,32 @@ export default function Home() {
     switch (activeView) {
       case "dashboard":
         return <Dashboard />;
-      case "url-scanner":
-        return <URLScanner />;
-      case "email-analyzer":
+      case "universal-scan":
+        return <UniversalScan />;
+      case "internet":
+        return <InternetAnalyzer />;
+      case "correos":
         return <EmailAnalyzer />;
+      case "telefono":
+        return <PhoneSecurity />;
+      case "mensajes":
+        return <MessageAnalyzer />;
+      case "identidad":
+        return <IdentityCheck />;
+      case "archivos":
+        return <FileAnalyzer />;
+      case "ia-detector":
+        return <IADetector />;
+      case "informacion":
+        return <InfoVerifier />;
       case "qr-scanner":
         return <QRScanner />;
-      case "network-monitor":
+      case "red":
         return <NetworkMonitor />;
-      case "deepfake-detector":
-        return <DeepfakeDetector />;
-      case "threat-intel":
-        return <ThreatIntel />;
+      case "sentinel-ia":
+        return <SentinelChat />;
+      case "premium":
+        return <PremiumFeatures />;
       default:
         return <Dashboard />;
     }
