@@ -4,6 +4,7 @@ from app.models.schemas import (
     EmailAnalysisRequest,
     NetworkScanRequest,
     ThreatIntelRequest,
+    IdentityCheckRequest,
 )
 from app.services.orchestrator import orchestrator
 
@@ -63,6 +64,18 @@ async def analyze_network(request: NetworkScanRequest):
     """Verificar integridad de la conexion de red."""
     try:
         result = await orchestrator.check_network(request.target_ip)
+        return result.model_dump()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/analyze/identity")
+async def analyze_identity(request: IdentityCheckRequest):
+    """Verificar si correo, telefono, usuario o password fue filtrado."""
+    try:
+        result = await orchestrator.check_identity(
+            request.value, request.check_type
+        )
         return result.model_dump()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -98,6 +98,12 @@ export const api = {
       body: JSON.stringify({ target_ip }),
     }),
 
+  checkIdentity: (value: string, check_type: string) =>
+    apiFetch<AnalysisResult>("/api/v1/analyze/identity", {
+      method: "POST",
+      body: JSON.stringify({ value, check_type }),
+    }),
+
   threatIntelLookup: (indicator: string, indicator_type = "url") =>
     apiFetch<{ indicator: string; results: ThreatIntelResult[] }>(
       "/api/v1/threat-intel/lookup",

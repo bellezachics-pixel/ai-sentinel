@@ -47,6 +47,11 @@ class NetworkScanRequest(BaseModel):
     check_dns: bool = True
 
 
+class IdentityCheckRequest(BaseModel):
+    value: str
+    check_type: str = "email"  # email, phone, username, password
+
+
 class ThreatIntelRequest(BaseModel):
     indicator: str
     indicator_type: str = "url"

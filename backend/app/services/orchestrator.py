@@ -28,6 +28,7 @@ class AnalysisOrchestrator:
         self._qrishing_analyzer = None
         self._deepfake_analyzer = None
         self._ocr_nlp_analyzer = None
+        self._identity_client = None
         self._analysis_history: list[AnalysisResult] = []
 
     @property
@@ -85,6 +86,13 @@ class AnalysisOrchestrator:
             from app.modules.ocr_nlp.analyzer import OCRNLPAnalyzer
             self._ocr_nlp_analyzer = OCRNLPAnalyzer()
         return self._ocr_nlp_analyzer
+
+    @property
+    def identity_client(self):
+        if self._identity_client is None:
+            from app.modules.identity.hibp_client import HIBPClient
+            self._identity_client = HIBPClient()
+        return self._identity_client
 
     async def analyze_url(self, url: str, deep_scan: bool = False) -> AnalysisResult:
         analysis_id = str(uuid.uuid4())[:8]
@@ -310,6 +318,79 @@ class AnalysisOrchestrator:
             findings=findings,
             recommendations=recommendations,
             metadata=network_result.get("metadata", {}),
+        )
+
+        self._analysis_history.append(result)
+        return result
+
+    async def check_identity(self, value: str, check_type: str = "email") -> AnalysisResult:
+        analysis_id = str(uuid.uuid4())[:8]
+
+        if check_type == "email":
+            hibp_result = await self.identity_client.check_email(value)
+        elif check_type == "password":
+            hibp_result = await self.identity_client.check_password(value)
+        elif check_type == "username":
+            hibp_result = await self.identity_client.check_username(value)
+        elif check_type == "phone":
+            hibp_result = await self.identity_client.check_phone(value)
+        else:
+            hibp_result = {"error": "Tipo de verificación no soportado", "found": False, "breaches": []}
+
+        error = hibp_result.get("error")
+        found = hibp_result.get("found", False)
+        breaches = hibp_result.get("breaches", [])
+
+        findings = []
+        if error:
+            findings.append({
+                "type": "identity_check_error",
+                "severity": "medium",
+                "description": error,
+                "source": "hibp",
+            })
+        elif found:
+            for breach in breaches:
+                findings.append({
+                    "type": "breach_found",
+                    "severity": "high",
+                    "description": f"{breach['name']} ({breach['date']}): datos expuestos: {', '.join(breach['data'])}",
+                    "source": "hibp",
+                    "details": breach,
+                })
+        else:
+            findings.append({
+                "type": "no_breach_found",
+                "severity": "low",
+                "description": hibp_result.get("message", "No se encontraron filtraciones"),
+                "source": "hibp",
+            })
+
+        risk_score = risk_engine.calculate_risk(
+            content_score=75 if found else 0,
+        )
+
+        recommendations = self._generate_recommendations(risk_score, findings)
+        if found:
+            recommendations.extend([
+                "Cambia tu contraseña inmediatamente en los servicios afectados.",
+                "Activa la autenticación de dos factores (2FA).",
+                "No reutilices contraseñas entre servicios.",
+            ])
+
+        result = AnalysisResult(
+            id=analysis_id,
+            analysis_type=AnalysisType.FULL_SCAN,
+            target=value,
+            timestamp=datetime.utcnow(),
+            risk_score=risk_score,
+            findings=findings,
+            recommendations=recommendations,
+            metadata={
+                "check_type": check_type,
+                "hibp_result": hibp_result,
+                "breaches": breaches,
+            },
         )
 
         self._analysis_history.append(result)

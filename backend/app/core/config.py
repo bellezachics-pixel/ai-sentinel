@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     VIRUSTOTAL_API_KEY: Optional[str] = None
     URLSCAN_API_KEY: Optional[str] = None
     ABUSEIPDB_API_KEY: Optional[str] = None
+    HIBP_API_KEY: Optional[str] = None
 
     # OpenAI
     OPENAI_API_KEY: Optional[str] = None

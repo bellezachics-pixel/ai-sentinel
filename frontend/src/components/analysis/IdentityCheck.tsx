@@ -5,12 +5,8 @@ import {
   Fingerprint, Mail, Phone, User, Key, Search, Loader2,
   AlertTriangle, CheckCircle, Shield, ShieldAlert,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-
-interface BreachResult {
-  found: boolean;
-  breaches: Array<{ name: string; date: string; data: string[] }>;
-}
+import { api, type AnalysisResult } from "@/lib/api";
+import { cn, getRiskColor, getRiskBg } from "@/lib/utils";
 
 const CHECKS = [
   { id: "email", label: "Correo filtrado", icon: Mail, placeholder: "tu@correo.com", description: "Busca si tu correo aparecio en filtraciones de datos" },
@@ -23,42 +19,30 @@ export default function IdentityCheck() {
   const [selectedCheck, setSelectedCheck] = useState(0);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<BreachResult | null>(null);
+  const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleCheck = async () => {
     if (!input.trim()) return;
     setLoading(true);
     setResult(null);
+    setError(null);
 
-    // Simulated check (would connect to HaveIBeenPwned API or similar in production)
-    await new Promise((r) => setTimeout(r, 1500 + Math.random() * 1000));
-
-    const value = input.trim().toLowerCase();
-
-    // Deterministic mock: same input always gives same result
-    const hash = value.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const found = hash % 3 !== 0; // ~66% chance of breach for demo purposes
-
-    const simulated: BreachResult = {
-      found,
-      breaches: [],
-    };
-
-    if (found) {
-      const possibleBreaches = [
-        { name: "LinkedIn", date: "2021-06", data: ["email", "password", "nombre"] },
-        { name: "Adobe", date: "2013-10", data: ["email", "password"] },
-        { name: "Canva", date: "2019-05", data: ["email", "nombre", "ubicacion"] },
-        { name: "Dropbox", date: "2012-07", data: ["email", "password"] },
-        { name: "MyFitnessPal", date: "2018-02", data: ["email", "IP", "password"] },
-      ];
-      const count = 1 + (hash % 3);
-      simulated.breaches = possibleBreaches.slice(0, count);
+    try {
+      const checkType = CHECKS[selectedCheck].id;
+      const data = await api.checkIdentity(input.trim(), checkType);
+      setResult(data);
+    } catch {
+      setError("No se pudo verificar. Verifica que la API este activa.");
+    } finally {
+      setLoading(false);
     }
-
-    setResult(simulated);
-    setLoading(false);
   };
+
+  const resultMeta = result?.metadata as any;
+  const breaches = resultMeta?.breaches || [];
+  const found = result?.findings.some((f) => f.type === "breach_found");
+  const apiError = result?.findings.some((f) => f.type === "identity_check_error");
 
   return (
     <div className="space-y-6 animate-fade-in-up">
@@ -74,7 +58,7 @@ export default function IdentityCheck() {
         {CHECKS.map((check, i) => (
           <button
             key={check.id}
-            onClick={() => { setSelectedCheck(i); setInput(""); setResult(null); }}
+            onClick={() => { setSelectedCheck(i); setInput(""); setResult(null); setError(null); }}
             className={cn(
               "flex flex-col items-center gap-2 p-4 rounded-lg border text-sm transition-all",
               selectedCheck === i
@@ -126,18 +110,38 @@ export default function IdentityCheck() {
         </div>
       )}
 
+      {error && !loading && (
+        <div className="rounded-xl bg-red-500/5 border border-red-500/20 p-4 flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm text-red-400 font-medium">Error</p>
+            <p className="text-xs text-red-400/70 mt-1">{error}</p>
+          </div>
+        </div>
+      )}
+
       {result && !loading && (
         <div className={cn(
           "rounded-xl border p-6",
-          result.found ? "bg-red-500/5 border-red-500/20" : "bg-emerald-500/5 border-emerald-500/20"
+          found ? "bg-red-500/5 border-red-500/20" : apiError ? "bg-amber-500/5 border-amber-500/20" : "bg-emerald-500/5 border-emerald-500/20"
         )}>
           <div className="flex items-center gap-3 mb-4">
-            {result.found ? (
+            {found ? (
               <>
                 <ShieldAlert className="w-8 h-8 text-red-400" />
                 <div>
                   <p className="text-lg font-bold text-red-400">Datos comprometidos</p>
-                  <p className="text-sm text-red-400/70">Se encontraron {result.breaches.length} filtracion(es)</p>
+                  <p className="text-sm text-red-400/70">Se encontraron {breaches.length} filtracion(es)</p>
+                </div>
+              </>
+            ) : apiError ? (
+              <>
+                <AlertTriangle className="w-8 h-8 text-amber-400" />
+                <div>
+                  <p className="text-lg font-bold text-amber-400">No se pudo verificar</p>
+                  <p className="text-sm text-amber-400/70">
+                    {result.findings.find((f) => f.type === "identity_check_error")?.description || "Error desconocido"}
+                  </p>
                 </div>
               </>
             ) : (
@@ -151,28 +155,36 @@ export default function IdentityCheck() {
             )}
           </div>
 
-          {result.found && (
+          {found && (
             <div className="space-y-3 mt-4">
-              {result.breaches.map((breach, i) => (
+              {breaches.map((breach: any, i: number) => (
                 <div key={i} className="bg-[#111827] rounded-lg p-4 border border-red-500/10">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-semibold text-slate-200">{breach.name}</span>
                     <span className="text-xs text-slate-500">{breach.date}</span>
                   </div>
                   <p className="text-xs text-slate-400">
-                    Datos expuestos: {breach.data.join(", ")}
+                    Datos expuestos: {Array.isArray(breach.data) ? breach.data.join(", ") : breach.data}
                   </p>
                 </div>
               ))}
-              <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4 mt-4">
-                <h4 className="text-sm font-semibold text-amber-400 mb-2">Recomendaciones</h4>
-                <ul className="space-y-1 text-xs text-amber-400/80">
-                  <li>&#8226; Cambia tu contrasena inmediatamente en los servicios afectados</li>
-                  <li>&#8226; Activa la autenticacion de dos factores (2FA)</li>
-                  <li>&#8226; No reutilices contrasenas entre servicios</li>
-                  <li>&#8226; Usa un gestor de contrasenas</li>
-                </ul>
-              </div>
+            </div>
+          )}
+
+          {result.recommendations.length > 0 && (
+            <div className={cn(
+              "rounded-lg p-4 mt-4",
+              found ? "bg-amber-500/10 border border-amber-500/20" : "bg-[#111827] border border-[#1e293b]"
+            )}>
+              <h4 className={cn("text-sm font-semibold mb-2", found ? "text-amber-400" : "text-slate-300")}>Recomendaciones</h4>
+              <ul className="space-y-1 text-xs text-slate-400">
+                {result.recommendations.map((rec, i) => (
+                  <li key={i} className="flex items-start gap-2">
+                    <span>•</span>
+                    <span>{rec}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
         </div>
