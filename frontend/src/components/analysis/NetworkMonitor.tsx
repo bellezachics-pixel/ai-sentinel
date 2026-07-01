@@ -37,6 +37,8 @@ export default function NetworkMonitor() {
     }
   };
 
+  const resultMeta = result?.metadata as any;
+
   return (
     <div className="space-y-6 animate-fade-in-up">
       <div>
@@ -131,7 +133,7 @@ export default function NetworkMonitor() {
                 <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#0a0e1a]/50">
                   <span className="text-xs text-slate-400">Latencia</span>
                   <span className="text-xs font-medium text-slate-300">
-                    {typeof result.metadata?.latency === "number" ? `${result.metadata.latency.toFixed(1)} ms` : "N/A"}
+                    {typeof resultMeta?.latency === "number" ? `${resultMeta.latency.toFixed(1)} ms` : "N/A"}
                   </span>
                 </div>
               </div>
@@ -142,18 +144,18 @@ export default function NetworkMonitor() {
               <div className="space-y-2">
                 <div className="p-2.5 rounded-lg bg-[#0a0e1a]/50">
                   <span className="text-[10px] text-slate-500 uppercase block">Target</span>
-                  <span className="text-xs text-slate-300 font-mono">{String(result.metadata?.target || result.target)}</span>
+                  <span className="text-xs text-slate-300 font-mono">{String(resultMeta?.target || result.target)}</span>
                 </div>
                 <div className="p-2.5 rounded-lg bg-[#0a0e1a]/50">
                   <span className="text-[10px] text-slate-500 uppercase block">Hostname</span>
-                  <span className="text-xs text-slate-300 font-mono">{String(result.metadata?.hostname || "N/A")}</span>
+                  <span className="text-xs text-slate-300 font-mono">{String(resultMeta?.hostname || "N/A")}</span>
                 </div>
               </div>
             </div>
           </div>
 
           {/* DNS info */}
-          {result.metadata?.dns && (
+          {resultMeta?.dns && (
             <div className="rounded-xl bg-[#111827] border border-[#1e293b] p-5">
               <h3 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
                 <Globe className="w-4 h-4 text-cyan-400" /> DNS
@@ -161,13 +163,13 @@ export default function NetworkMonitor() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="p-3 rounded-lg bg-[#0a0e1a]/50">
                   <span className="text-[10px] text-slate-500 uppercase block mb-1">Resolver</span>
-                  <span className="text-xs text-slate-300 font-mono">{String((result.metadata.dns as any).resolver || "Sistema")}</span>
+                  <span className="text-xs text-slate-300 font-mono">{String(resultMeta.dns?.resolver || "Sistema")}</span>
                 </div>
                 <div className="p-3 rounded-lg bg-[#0a0e1a]/50">
                   <span className="text-[10px] text-slate-500 uppercase block mb-1">IPs resueltas</span>
                   <span className="text-xs text-slate-300 font-mono">
-                    {Array.isArray((result.metadata.dns as any).resolved_ips)
-                      ? (result.metadata.dns as any).resolved_ips.join(", ") || "N/A"
+                    {Array.isArray(resultMeta.dns?.resolved_ips)
+                      ? resultMeta.dns.resolved_ips.join(", ") || "N/A"
                       : "N/A"}
                   </span>
                 </div>
@@ -205,12 +207,12 @@ export default function NetworkMonitor() {
           </div>
 
           {/* TLS fingerprint */}
-          {result.metadata?.tls_fingerprint && (
+          {resultMeta?.tls_fingerprint && (
             <div className="rounded-xl bg-[#111827] border border-[#1e293b] p-5">
               <h3 className="text-sm font-semibold text-slate-300 mb-2 flex items-center gap-2">
                 <Fingerprint className="w-4 h-4 text-cyan-400" /> TLS Fingerprint
               </h3>
-              <p className="text-[10px] text-mono text-slate-500 break-all">{String(result.metadata.tls_fingerprint)}</p>
+              <p className="text-[10px] text-mono text-slate-500 break-all">{String(resultMeta.tls_fingerprint)}</p>
             </div>
           )}
 
