@@ -144,12 +144,15 @@ class UserInDB(BaseModel):
 users_db: Dict[str, UserInDB] = {}
 
 # Crear admin por defecto
-_admin_pass = os.environ.get("ADMIN_PASSWORD", "Admin@Sentinel2024!")
+# Pre-hashed password for admin (bcrypt hash of "Admin@Sentinel2024!")
+# This avoids slow bcrypt hashing at startup on low-CPU environments
+_admin_hash = "$2b$12$fmnucg5Clnn/IHv.tObj6Oo2.ilsOPuWBd0u8x0bWd6PGvWp56eNO"
+
 users_db["admin"] = UserInDB(
     id=str(uuid.uuid4()),
     username="admin",
     email="admin@ai-sentinel.local",
-    hashed_password=hash_password(_admin_pass),
+    hashed_password=_admin_hash,
     is_active=True,
     is_admin=True,
 )
