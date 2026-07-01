@@ -1,8 +1,5 @@
 const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL ||
-  (typeof window !== "undefined" && window.location.hostname !== "localhost"
-    ? "https://ai-sentinel-31so.onrender.com"
-    : "http://localhost:8000");
+  process.env.NEXT_PUBLIC_API_URL || "https://ai-sentinel-31so.onrender.com";
 
 export interface AnalysisResult {
   id: string;
