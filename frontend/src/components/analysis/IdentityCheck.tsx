@@ -31,15 +31,20 @@ export default function IdentityCheck() {
     setResult(null);
 
     // Simulated check (would connect to HaveIBeenPwned API or similar in production)
-    await new Promise((r) => setTimeout(r, 2000 + Math.random() * 1000));
+    await new Promise((r) => setTimeout(r, 1500 + Math.random() * 1000));
 
-    const checkType = CHECKS[selectedCheck].id;
+    const value = input.trim().toLowerCase();
+
+    // Deterministic mock: same input always gives same result
+    const hash = value.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const found = hash % 3 !== 0; // ~66% chance of breach for demo purposes
+
     const simulated: BreachResult = {
-      found: Math.random() > 0.4,
+      found,
       breaches: [],
     };
 
-    if (simulated.found) {
+    if (found) {
       const possibleBreaches = [
         { name: "LinkedIn", date: "2021-06", data: ["email", "password", "nombre"] },
         { name: "Adobe", date: "2013-10", data: ["email", "password"] },
@@ -47,7 +52,7 @@ export default function IdentityCheck() {
         { name: "Dropbox", date: "2012-07", data: ["email", "password"] },
         { name: "MyFitnessPal", date: "2018-02", data: ["email", "IP", "password"] },
       ];
-      const count = 1 + Math.floor(Math.random() * 3);
+      const count = 1 + (hash % 3);
       simulated.breaches = possibleBreaches.slice(0, count);
     }
 
