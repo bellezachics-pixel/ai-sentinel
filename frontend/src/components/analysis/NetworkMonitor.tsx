@@ -7,8 +7,6 @@ import {
   Loader2,
   AlertTriangle,
   CheckCircle,
-  Shield,
-  Lock,
   Globe,
   Fingerprint,
 } from "lucide-react";
@@ -38,10 +36,6 @@ export default function NetworkMonitor() {
       setLoading(false);
     }
   };
-
-  const tlsInfo = result?.metadata?.tls as Record<string, unknown> | undefined;
-  const arpInfo = result?.metadata?.arp as Record<string, unknown> | undefined;
-  const dnsInfo = result?.metadata?.dns as Record<string, unknown> | undefined;
 
   return (
     <div className="space-y-6 animate-fade-in-up">
@@ -111,132 +105,129 @@ export default function NetworkMonitor() {
 
       {/* Results */}
       {result && !loading && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Integrity Score */}
-          <div className="rounded-xl bg-[#111827] border border-[#1e293b] p-5 flex flex-col items-center justify-center">
-            <RiskGauge score={result.risk_score.total} size={160} />
-            <p className="text-xs text-slate-500 mt-3">
-              Puntuación de Integridad de Red
-            </p>
-          </div>
+        <div className="space-y-4">
+          {/* Summary cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="rounded-xl bg-[#111827] border border-[#1e293b] p-5 flex flex-col items-center justify-center">
+              <RiskGauge score={result.risk_score.total} size={140} />
+              <p className="text-xs text-slate-500 mt-2">Puntuación de Riesgo</p>
+            </div>
 
-          {/* Status Details */}
-          <div className="rounded-xl bg-[#111827] border border-[#1e293b] p-5">
-            <h3 className="text-sm font-semibold text-slate-300 mb-4">
-              Estado de la Red
-            </h3>
-            <div className="space-y-3">
-              {/* Connection */}
-              <div className="flex items-center justify-between p-3 rounded-lg bg-[#0a0e1a]/50">
-                <div className="flex items-center gap-2.5">
-                  <Shield className="w-4 h-4 text-slate-400" />
+            <div className="rounded-xl bg-[#111827] border border-[#1e293b] p-5">
+              <h3 className="text-sm font-semibold text-slate-300 mb-3">Estado de la Red</h3>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#0a0e1a]/50">
                   <span className="text-xs text-slate-400">Conexión</span>
+                  <span className={cn("text-xs font-medium", result.risk_score.level === "low" ? "text-emerald-400" : "text-amber-400")}>
+                    {result.risk_score.level === "low" ? "Segura" : "Revisar"}
+                  </span>
                 </div>
-                <span
-                  className={cn(
-                    "text-xs font-medium",
-                    result.risk_score.level === "low"
-                      ? "text-emerald-400"
-                      : "text-red-400"
-                  )}
-                >
-                  {result.risk_score.level === "low" ? "Segura" : "Riesgo detectado"}
-                </span>
+                <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#0a0e1a]/50">
+                  <span className="text-xs text-slate-400">Nivel de riesgo</span>
+                  <span className={cn("text-xs font-medium uppercase", getRiskColor(result.risk_score.level))}>
+                    {result.risk_score.level}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#0a0e1a]/50">
+                  <span className="text-xs text-slate-400">Latencia</span>
+                  <span className="text-xs font-medium text-slate-300">
+                    {typeof result.metadata?.latency === "number" ? `${result.metadata.latency.toFixed(1)} ms` : "N/A"}
+                  </span>
+                </div>
               </div>
+            </div>
 
-              {/* TLS */}
-              <div className="flex items-center justify-between p-3 rounded-lg bg-[#0a0e1a]/50">
-                <div className="flex items-center gap-2.5">
-                  <Lock className="w-4 h-4 text-slate-400" />
-                  <span className="text-xs text-slate-400">TLS/SSL</span>
+            <div className="rounded-xl bg-[#111827] border border-[#1e293b] p-5">
+              <h3 className="text-sm font-semibold text-slate-300 mb-3">Objetivo</h3>
+              <div className="space-y-2">
+                <div className="p-2.5 rounded-lg bg-[#0a0e1a]/50">
+                  <span className="text-[10px] text-slate-500 uppercase block">Target</span>
+                  <span className="text-xs text-slate-300 font-mono">{String(result.metadata?.target || result.target)}</span>
                 </div>
-                <span className="text-xs font-medium text-emerald-400">
-                  {tlsInfo ? "Verificado" : "N/A"}
-                </span>
-              </div>
-
-              {/* DNS */}
-              <div className="flex items-center justify-between p-3 rounded-lg bg-[#0a0e1a]/50">
-                <div className="flex items-center gap-2.5">
-                  <Globe className="w-4 h-4 text-slate-400" />
-                  <span className="text-xs text-slate-400">DNS</span>
+                <div className="p-2.5 rounded-lg bg-[#0a0e1a]/50">
+                  <span className="text-[10px] text-slate-500 uppercase block">Hostname</span>
+                  <span className="text-xs text-slate-300 font-mono">{String(result.metadata?.hostname || "N/A")}</span>
                 </div>
-                <span
-                  className={cn(
-                    "text-xs font-medium",
-                    dnsInfo ? "text-amber-400" : "text-emerald-400"
-                  )}
-                >
-                  {dnsInfo ? "Anomalía" : "Normal"}
-                </span>
-              </div>
-
-              {/* ARP */}
-              <div className="flex items-center justify-between p-3 rounded-lg bg-[#0a0e1a]/50">
-                <div className="flex items-center gap-2.5">
-                  <Network className="w-4 h-4 text-slate-400" />
-                  <span className="text-xs text-slate-400">ARP</span>
-                </div>
-                <span
-                  className={cn(
-                    "text-xs font-medium",
-                    arpInfo ? "text-red-400" : "text-emerald-400"
-                  )}
-                >
-                  {arpInfo ? "Spoofing detectado" : "Normal"}
-                </span>
               </div>
             </div>
           </div>
 
-          {/* TLS Fingerprint & Findings */}
+          {/* DNS info */}
+          {result.metadata?.dns && (
+            <div className="rounded-xl bg-[#111827] border border-[#1e293b] p-5">
+              <h3 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
+                <Globe className="w-4 h-4 text-cyan-400" /> DNS
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-3 rounded-lg bg-[#0a0e1a]/50">
+                  <span className="text-[10px] text-slate-500 uppercase block mb-1">Resolver</span>
+                  <span className="text-xs text-slate-300 font-mono">{String((result.metadata.dns as any).resolver || "Sistema")}</span>
+                </div>
+                <div className="p-3 rounded-lg bg-[#0a0e1a]/50">
+                  <span className="text-[10px] text-slate-500 uppercase block mb-1">IPs resueltas</span>
+                  <span className="text-xs text-slate-300 font-mono">
+                    {Array.isArray((result.metadata.dns as any).resolved_ips)
+                      ? (result.metadata.dns as any).resolved_ips.join(", ") || "N/A"
+                      : "N/A"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Findings */}
           <div className="rounded-xl bg-[#111827] border border-[#1e293b] p-5">
-            <h3 className="text-sm font-semibold text-slate-300 mb-3">
-              Hallazgos
+            <h3 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-cyan-400" /> Hallazgos
             </h3>
             {result.findings.length === 0 ? (
-              <div className="flex items-center gap-2 text-emerald-400 py-4">
+              <div className="flex items-center gap-2 text-emerald-400 py-3">
                 <CheckCircle className="w-5 h-5" />
-                <span className="text-sm">Red segura</span>
+                <span className="text-sm">No se detectaron anomalías de red</span>
               </div>
             ) : (
-              <div className="space-y-2 max-h-[300px] overflow-y-auto">
+              <div className="space-y-2">
                 {result.findings.map((finding, i) => (
-                  <div
-                    key={i}
-                    className={cn(
-                      "flex items-start gap-2 p-2.5 rounded-lg border",
-                      getRiskBg(finding.severity)
-                    )}
-                  >
-                    <AlertTriangle
-                      className={cn(
-                        "w-3.5 h-3.5 shrink-0 mt-0.5",
-                        getRiskColor(finding.severity)
-                      )}
-                    />
-                    <p className="text-xs text-slate-300">
-                      {finding.description}
-                    </p>
+                  <div key={i} className={cn("flex items-start gap-2 p-3 rounded-lg border", getRiskBg(finding.severity))}>
+                    <AlertTriangle className={cn("w-4 h-4 shrink-0 mt-0.5", getRiskColor(finding.severity))} />
+                    <div>
+                      <p className={cn("text-xs font-medium capitalize", getRiskColor(finding.severity))}>
+                        {finding.severity}
+                      </p>
+                      <p className="text-xs text-slate-300 mt-0.5">
+                        {finding.description || (finding as any).detail || finding.type}
+                      </p>
+                    </div>
                   </div>
                 ))}
               </div>
             )}
-
-            {tlsInfo && (
-              <div className="mt-4 pt-4 border-t border-[#1e293b]">
-                <div className="flex items-center gap-2 mb-2">
-                  <Fingerprint className="w-3.5 h-3.5 text-cyan-400" />
-                  <span className="text-xs text-slate-400 font-medium">
-                    TLS Fingerprint
-                  </span>
-                </div>
-                <p className="text-[10px] text-mono text-slate-500 break-all">
-                  {JSON.stringify(tlsInfo).slice(0, 200)}
-                </p>
-              </div>
-            )}
           </div>
+
+          {/* TLS fingerprint */}
+          {result.metadata?.tls_fingerprint && (
+            <div className="rounded-xl bg-[#111827] border border-[#1e293b] p-5">
+              <h3 className="text-sm font-semibold text-slate-300 mb-2 flex items-center gap-2">
+                <Fingerprint className="w-4 h-4 text-cyan-400" /> TLS Fingerprint
+              </h3>
+              <p className="text-[10px] text-mono text-slate-500 break-all">{String(result.metadata.tls_fingerprint)}</p>
+            </div>
+          )}
+
+          {/* Recommendations */}
+          {result.recommendations.length > 0 && (
+            <div className="rounded-xl bg-amber-500/5 border border-amber-500/20 p-5">
+              <h3 className="text-sm font-semibold text-amber-400 mb-2">Recomendaciones</h3>
+              <ul className="space-y-1">
+                {result.recommendations.map((rec, i) => (
+                  <li key={i} className="text-xs text-amber-400/80 flex items-start gap-2">
+                    <span>•</span>
+                    <span>{rec}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
     </div>
