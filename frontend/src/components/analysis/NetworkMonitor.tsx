@@ -124,8 +124,8 @@ export default function NetworkMonitor() {
                 </div>
                 <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#0a0e1a]/50">
                   <span className="text-xs text-slate-400">Nivel de riesgo</span>
-                  <span className={cn("text-xs font-medium uppercase", getRiskColor(result.risk_score.level))}>
-                    {result.risk_score.level}
+                  <span className={cn("text-xs font-medium uppercase", getRiskColor(String(result.risk_score.level)))}>
+                    {String(result.risk_score.level)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#0a0e1a]/50">
@@ -188,11 +188,11 @@ export default function NetworkMonitor() {
             ) : (
               <div className="space-y-2">
                 {result.findings.map((finding, i) => (
-                  <div key={i} className={cn("flex items-start gap-2 p-3 rounded-lg border", getRiskBg(finding.severity))}>
-                    <AlertTriangle className={cn("w-4 h-4 shrink-0 mt-0.5", getRiskColor(finding.severity))} />
+                  <div key={i} className={cn("flex items-start gap-2 p-3 rounded-lg border", getRiskBg(String(finding.severity)))}>
+                    <AlertTriangle className={cn("w-4 h-4 shrink-0 mt-0.5", getRiskColor(String(finding.severity)))} />
                     <div>
-                      <p className={cn("text-xs font-medium capitalize", getRiskColor(finding.severity))}>
-                        {finding.severity}
+                      <p className={cn("text-xs font-medium capitalize", getRiskColor(String(finding.severity)))}>
+                        {String(finding.severity)}
                       </p>
                       <p className="text-xs text-slate-300 mt-0.5">
                         {finding.description || (finding as any).detail || finding.type}
