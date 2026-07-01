@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     # Server
     HOST: str = "0.0.0.0"
     PORT: int = 8000
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
+    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://127.0.0.1:3000", "https://frontend-kappa-wheat-28.vercel.app", "https://frontend-odqi9ejl1-bellezachics-pixels-projects.vercel.app"]
 
     # Database
     DATABASE_URL: str = "sqlite+aiosqlite:///./ai_sentinel.db"

@@ -237,6 +237,8 @@ ALLOWED_ORIGINS: Set[str] = {
     "http://localhost:3001",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:3001",
+    "https://frontend-kappa-wheat-28.vercel.app",
+    "https://frontend-odqi9ejl1-bellezachics-pixels-projects.vercel.app",
 }
 
 
