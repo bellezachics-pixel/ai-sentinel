@@ -1,4 +1,5 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+from typing import Optional
 from app.models.schemas import (
     URLAnalysisRequest,
     EmailAnalysisRequest,
@@ -7,12 +8,18 @@ from app.models.schemas import (
     IdentityCheckRequest,
 )
 from app.services.orchestrator import orchestrator
+from app.core.auth import optional_or_required_auth, UserInDB
 
 router = APIRouter(prefix="/api/v1", tags=["Analysis"])
 
+AuthDep = Depends(optional_or_required_auth)
+
 
 @router.post("/analyze/url")
-async def analyze_url(request: URLAnalysisRequest):
+async def analyze_url(
+    request: URLAnalysisRequest,
+    user: Optional[UserInDB] = AuthDep,
+):
     """Analizar una URL para detectar phishing, malware y amenazas."""
     try:
         result = await orchestrator.analyze_url(request.url, request.deep_scan)
@@ -22,7 +29,10 @@ async def analyze_url(request: URLAnalysisRequest):
 
 
 @router.post("/analyze/email")
-async def analyze_email(request: EmailAnalysisRequest):
+async def analyze_email(
+    request: EmailAnalysisRequest,
+    user: Optional[UserInDB] = AuthDep,
+):
     """Analizar un email para detectar phishing y spear phishing."""
     try:
         result = await orchestrator.analyze_email(
@@ -37,7 +47,10 @@ async def analyze_email(request: EmailAnalysisRequest):
 
 
 @router.post("/analyze/qr")
-async def analyze_qr(file: UploadFile = File(...)):
+async def analyze_qr(
+    file: UploadFile = File(...),
+    user: Optional[UserInDB] = AuthDep,
+):
     """Analizar un codigo QR para detectar QRishing."""
     try:
         image_data = await file.read()
@@ -48,7 +61,10 @@ async def analyze_qr(file: UploadFile = File(...)):
 
 
 @router.post("/analyze/media")
-async def analyze_media(file: UploadFile = File(...)):
+async def analyze_media(
+    file: UploadFile = File(...),
+    user: Optional[UserInDB] = AuthDep,
+):
     """Analizar archivos multimedia para detectar deepfakes."""
     try:
         file_data = await file.read()
@@ -60,7 +76,10 @@ async def analyze_media(file: UploadFile = File(...)):
 
 
 @router.post("/analyze/network")
-async def analyze_network(request: NetworkScanRequest):
+async def analyze_network(
+    request: NetworkScanRequest,
+    user: Optional[UserInDB] = AuthDep,
+):
     """Verificar integridad de la conexion de red."""
     try:
         result = await orchestrator.check_network(request.target_ip)
@@ -70,7 +89,10 @@ async def analyze_network(request: NetworkScanRequest):
 
 
 @router.post("/analyze/identity")
-async def analyze_identity(request: IdentityCheckRequest):
+async def analyze_identity(
+    request: IdentityCheckRequest,
+    user: Optional[UserInDB] = AuthDep,
+):
     """Verificar si correo, telefono, usuario o password fue filtrado."""
     try:
         result = await orchestrator.check_identity(
@@ -82,7 +104,10 @@ async def analyze_identity(request: IdentityCheckRequest):
 
 
 @router.post("/threat-intel/lookup")
-async def threat_intel_lookup(request: ThreatIntelRequest):
+async def threat_intel_lookup(
+    request: ThreatIntelRequest,
+    user: Optional[UserInDB] = AuthDep,
+):
     """Consultar fuentes de Threat Intelligence."""
     try:
         results = await orchestrator.threat_intel.query_all(
@@ -94,7 +119,7 @@ async def threat_intel_lookup(request: ThreatIntelRequest):
 
 
 @router.get("/dashboard/stats")
-async def get_dashboard_stats():
+async def get_dashboard_stats(user: Optional[UserInDB] = AuthDep):
     """Obtener estadisticas del dashboard."""
     try:
         stats = await orchestrator.get_dashboard_stats()
@@ -105,7 +130,7 @@ async def get_dashboard_stats():
 
 @router.get("/health")
 async def health_check():
-    """Health check endpoint."""
+    """Health check endpoint (publico)."""
     return {
         "status": "healthy",
         "service": "AI-Sentinel",

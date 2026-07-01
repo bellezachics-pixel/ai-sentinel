@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Shield,
   LayoutDashboard,
@@ -23,6 +23,7 @@ import {
   MessageCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getToken, clearToken } from "@/lib/api";
 
 export type ViewType =
   | "dashboard"
@@ -96,14 +97,26 @@ const navGroups: NavGroup[] = [
 interface SidebarProps {
   activeView: ViewType;
   onViewChange: (view: ViewType) => void;
+  onLoginClick?: () => void;
 }
 
-export default function Sidebar({ activeView, onViewChange }: SidebarProps) {
+export default function Sidebar({ activeView, onViewChange, onLoginClick }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    setIsLoggedIn(!!getToken());
+  }, []);
 
   const toggleGroup = (title: string) => {
     setCollapsedGroups((prev) => ({ ...prev, [title]: !prev[title] }));
+  };
+
+  const handleLogout = () => {
+    clearToken();
+    setIsLoggedIn(false);
+    window.location.reload();
   };
 
   return (
@@ -189,7 +202,18 @@ export default function Sidebar({ activeView, onViewChange }: SidebarProps) {
       </nav>
 
       {/* Bottom */}
-      <div className="border-t border-[#1e293b] p-2 shrink-0">
+      <div className="border-t border-[#1e293b] p-2 shrink-0 space-y-2">
+        <button
+          onClick={isLoggedIn ? handleLogout : onLoginClick}
+          className={cn(
+            "flex items-center gap-2 w-full px-3 py-2 rounded-lg text-xs font-medium transition-colors",
+            isLoggedIn
+              ? "text-red-400 hover:bg-red-500/10"
+              : "text-cyan-400 hover:bg-cyan-500/10 border border-cyan-500/20"
+          )}
+        >
+          {isLoggedIn ? "Cerrar sesion" : "Iniciar sesion"}
+        </button>
         <div className={cn("flex items-center gap-3 px-3 py-2 rounded-lg", collapsed ? "justify-center" : "")}>
           <div className="relative shrink-0">
             <div className="w-2 h-2 rounded-full bg-emerald-400" />

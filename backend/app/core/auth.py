@@ -21,6 +21,7 @@ from passlib.context import CryptContext
 from pydantic import BaseModel, Field, validator
 
 from app.core.config import settings
+from app.core.user_store import get_users, set_users, add_to_blacklist, is_blacklisted
 
 
 # ============================================================
@@ -76,20 +77,6 @@ def decode_token(token: str) -> dict:
 
 
 # ============================================================
-# Token Blacklist (revocacion de tokens)
-# ============================================================
-token_blacklist: set = set()
-
-
-def revoke_token(jti: str):
-    token_blacklist.add(jti)
-
-
-def is_token_revoked(jti: str) -> bool:
-    return jti in token_blacklist
-
-
-# ============================================================
 # User Models
 # ============================================================
 class UserCreate(BaseModel):
@@ -139,23 +126,61 @@ class UserInDB(BaseModel):
 
 
 # ============================================================
-# In-Memory User Store (usar DB en produccion)
+# User Store (JSON-backed, use real DB in production)
 # ============================================================
 users_db: Dict[str, UserInDB] = {}
 
-# Crear admin por defecto
-# Pre-hashed password for admin (bcrypt hash of "Admin@Sentinel2024!")
-# This avoids slow bcrypt hashing at startup on low-CPU environments
-_admin_hash = "$2b$12$fmnucg5Clnn/IHv.tObj6Oo2.ilsOPuWBd0u8x0bWd6PGvWp56eNO"
 
-users_db["admin"] = UserInDB(
-    id=str(uuid.uuid4()),
-    username="admin",
-    email="admin@ai-sentinel.local",
-    hashed_password=_admin_hash,
-    is_active=True,
-    is_admin=True,
-)
+def _load_users():
+    global users_db
+    raw = get_users()
+    users_db = {}
+    for username, data in raw.items():
+        try:
+            users_db[username] = UserInDB(**data)
+        except Exception:
+            continue
+
+    # Create admin only if ADMIN_PASSWORD is set
+    admin_password = settings.ADMIN_PASSWORD
+    if admin_password and "admin" not in users_db:
+        users_db["admin"] = UserInDB(
+            id=str(uuid.uuid4()),
+            username="admin",
+            email="admin@ai-sentinel.local",
+            hashed_password=hash_password(admin_password),
+            is_active=True,
+            is_admin=True,
+        )
+        _persist_users()
+
+
+def _persist_users():
+    data = {u.username: u.model_dump() for u in users_db.values()}
+    set_users(data)
+
+
+_load_users()
+
+
+def get_user(username: str) -> Optional[UserInDB]:
+    return users_db.get(username)
+
+
+def create_user(user: UserInDB):
+    users_db[user.username] = user
+    _persist_users()
+
+
+# ============================================================
+# Token Blacklist
+# ============================================================
+def revoke_token(jti: str):
+    add_to_blacklist(jti)
+
+
+def is_token_revoked(jti: str) -> bool:
+    return is_blacklisted(jti)
 
 
 # ============================================================
@@ -220,5 +245,18 @@ async def require_admin(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Se requieren permisos de administrador",
+        )
+    return user
+
+
+async def optional_or_required_auth(
+    user: Optional[UserInDB] = Depends(get_current_user),
+) -> Optional[UserInDB]:
+    """Requiere auth solo si REQUIRE_AUTH esta activado."""
+    if settings.REQUIRE_AUTH and not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Autenticacion requerida",
+            headers={"WWW-Authenticate": "Bearer"},
         )
     return user

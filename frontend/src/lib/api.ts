@@ -50,15 +50,61 @@ export interface DashboardStats {
   };
 }
 
+export interface AuthResponse {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  expires_in: number;
+}
+
+function getToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("ai_sentinel_token");
+}
+
+export function setToken(token: string) {
+  if (typeof window !== "undefined") {
+    localStorage.setItem("ai_sentinel_token", token);
+  }
+}
+
+export function clearToken() {
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("ai_sentinel_token");
+  }
+}
+
 async function apiFetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  const token = getToken();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...options?.headers,
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
   const res = await fetch(`${API_BASE}${endpoint}`, {
-    headers: { "Content-Type": "application/json", ...options?.headers },
+    headers,
     ...options,
   });
   if (!res.ok) {
     throw new Error(`API Error: ${res.status} ${res.statusText}`);
   }
   return res.json();
+}
+
+function apiFormData(endpoint: string, formData: FormData) {
+  const token = getToken();
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  return fetch(`${API_BASE}${endpoint}`, {
+    method: "POST",
+    headers,
+    body: formData,
+  }).then((r) => r.json() as Promise<AnalysisResult>);
 }
 
 export const api = {
@@ -77,19 +123,13 @@ export const api = {
   analyzeQR: (file: File) => {
     const formData = new FormData();
     formData.append("file", file);
-    return fetch(`${API_BASE}/api/v1/analyze/qr`, {
-      method: "POST",
-      body: formData,
-    }).then((r) => r.json() as Promise<AnalysisResult>);
+    return apiFormData("/api/v1/analyze/qr", formData);
   },
 
   analyzeMedia: (file: File) => {
     const formData = new FormData();
     formData.append("file", file);
-    return fetch(`${API_BASE}/api/v1/analyze/media`, {
-      method: "POST",
-      body: formData,
-    }).then((r) => r.json() as Promise<AnalysisResult>);
+    return apiFormData("/api/v1/analyze/media", formData);
   },
 
   checkNetwork: (target_ip?: string) =>
@@ -116,4 +156,21 @@ export const api = {
   getDashboardStats: () => apiFetch<DashboardStats>("/api/v1/dashboard/stats"),
 
   healthCheck: () => apiFetch<{ status: string }>("/api/v1/health"),
+
+  login: (username: string, password: string) =>
+    apiFetch<AuthResponse>("/api/v1/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    }),
+
+  register: (username: string, password: string, email: string) =>
+    apiFetch<AuthResponse>("/api/v1/auth/register", {
+      method: "POST",
+      body: JSON.stringify({ username, password, email }),
+    }),
+
+  me: () =>
+    apiFetch<{ username: string; email: string; is_admin: boolean }>(
+      "/api/v1/auth/me"
+    ),
 };

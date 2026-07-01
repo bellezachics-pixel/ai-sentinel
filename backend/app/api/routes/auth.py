@@ -19,7 +19,8 @@ from app.core.auth import (
     create_refresh_token,
     decode_token,
     revoke_token,
-    users_db,
+    get_user,
+    create_user,
     require_auth,
 )
 from app.core.security import rate_limit_store
@@ -30,13 +31,14 @@ router = APIRouter(prefix="/api/v1/auth", tags=["Authentication"])
 @router.post("/register", response_model=TokenResponse)
 async def register(request: Request, user_data: UserCreate):
     """Registrar nuevo usuario."""
-    if user_data.username in users_db:
+    if get_user(user_data.username):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="El nombre de usuario ya existe",
         )
 
     # Check if email already used
+    from app.core.auth import users_db
     for u in users_db.values():
         if u.email == user_data.email:
             raise HTTPException(
@@ -50,7 +52,7 @@ async def register(request: Request, user_data: UserCreate):
         email=user_data.email,
         hashed_password=hash_password(user_data.password),
     )
-    users_db[user.username] = user
+    create_user(user)
 
     access_token = create_access_token(data={"sub": user.username})
     refresh_token = create_refresh_token(data={"sub": user.username})
@@ -74,7 +76,7 @@ async def login(request: Request, credentials: UserLogin):
             detail="Demasiados intentos fallidos. Cuenta bloqueada por 15 minutos.",
         )
 
-    user = users_db.get(credentials.username)
+    user = get_user(credentials.username)
     if not user or not verify_password(credentials.password, user.hashed_password):
         rate_limit_store.add_failed_auth(client_ip)
         raise HTTPException(

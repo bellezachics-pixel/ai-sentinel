@@ -31,10 +31,16 @@ class Settings(BaseSettings):
     WEIGHT_HEADERS: float = 0.20
     WEIGHT_NETWORK: float = 0.25
 
-    # JWT
-    SECRET_KEY: str = "ai-sentinel-secret-key-change-in-production"
+    # JWT - MUST be changed in production via environment variable
+    SECRET_KEY: str = ""
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+
+    # Admin user (only created if ADMIN_PASSWORD is set)
+    ADMIN_PASSWORD: Optional[str] = None
+
+    # Auth requirement for analysis endpoints
+    REQUIRE_AUTH: bool = True
 
     class Config:
         env_file = ".env"

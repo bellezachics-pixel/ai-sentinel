@@ -14,6 +14,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 import httpx
+from app.core.url_validator import validate_url
 
 
 # --- Security Header Definitions ---
@@ -85,9 +86,11 @@ class HeaderAnalyzer:
 
     async def _fetch_headers(self, url: str) -> tuple[dict[str, str], int, str]:
         """Fetch HTTP headers from a URL."""
+        # SSRF prevention
+        validate_url(url)
         async with httpx.AsyncClient(
             timeout=15.0,
-            follow_redirects=True,
+            follow_redirects=False,
             verify=True,
         ) as client:
             response = await client.head(url)

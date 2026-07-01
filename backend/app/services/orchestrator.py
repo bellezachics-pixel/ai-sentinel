@@ -16,6 +16,7 @@ from app.models.schemas import (
     ThreatIntelResult,
 )
 from app.services.risk_engine import risk_engine
+from app.core.url_validator import validate_url
 
 
 class AnalysisOrchestrator:
@@ -97,6 +98,26 @@ class AnalysisOrchestrator:
     async def analyze_url(self, url: str, deep_scan: bool = False) -> AnalysisResult:
         analysis_id = str(uuid.uuid4())[:8]
 
+        # Validate URL to prevent SSRF
+        try:
+            url = validate_url(url)
+        except ValueError as exc:
+            return AnalysisResult(
+                id=analysis_id,
+                analysis_type=AnalysisType.URL,
+                target=url,
+                timestamp=datetime.utcnow(),
+                risk_score=risk_engine.calculate_risk(content_score=50),
+                findings=[{
+                    "type": "invalid_url",
+                    "severity": "high",
+                    "description": f"URL no permitida: {str(exc)}",
+                    "source": "url_validator",
+                }],
+                recommendations=["Verifica que la URL sea publica y accesible."],
+                metadata={"error": str(exc)},
+            )
+
         # Run analyses in parallel
         tasks = [
             self.url_analyzer.analyze_url(url),
@@ -120,11 +141,13 @@ class AnalysisOrchestrator:
             if len(results) > 3 and not isinstance(results[3], Exception):
                 intel_results = results[3]
 
-        # Content analysis (fetch page content)
+        # Content analysis (fetch page content) - SSRF-safe
         content_result = {"score": 0, "findings": []}
         try:
             import httpx
-            async with httpx.AsyncClient(timeout=10, follow_redirects=True, verify=False) as client:
+            async with httpx.AsyncClient(
+                timeout=10, follow_redirects=False, verify=True
+            ) as client:
                 resp = await client.get(url)
                 content_result = await self.content_analyzer.analyze_content(resp.text, "html")
         except Exception:

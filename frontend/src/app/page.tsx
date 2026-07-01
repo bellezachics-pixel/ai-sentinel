@@ -17,6 +17,7 @@ import QRScanner from "@/components/analysis/QRScanner";
 import NetworkMonitor from "@/components/analysis/NetworkMonitor";
 import SentinelChat from "@/components/analysis/SentinelChat";
 import PremiumFeatures from "@/components/analysis/PremiumFeatures";
+import AuthModal from "@/components/auth/AuthModal";
 
 const VIEW_TITLES: Record<ViewType, string> = {
   dashboard: "Panel de Control",
@@ -37,6 +38,7 @@ const VIEW_TITLES: Record<ViewType, string> = {
 
 export default function Home() {
   const [activeView, setActiveView] = useState<ViewType>("dashboard");
+  const [authOpen, setAuthOpen] = useState(false);
 
   const renderContent = () => {
     switch (activeView) {
@@ -75,11 +77,20 @@ export default function Home() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#0a0e1a]">
-      <Sidebar activeView={activeView} onViewChange={setActiveView} />
+      <Sidebar
+        activeView={activeView}
+        onViewChange={setActiveView}
+        onLoginClick={() => setAuthOpen(true)}
+      />
       <div className="flex flex-col flex-1 min-w-0">
         <Header title={VIEW_TITLES[activeView]} />
         <main className="flex-1 overflow-y-auto p-6">{renderContent()}</main>
       </div>
+      <AuthModal
+        isOpen={authOpen}
+        onClose={() => setAuthOpen(false)}
+        onSuccess={() => window.location.reload()}
+      />
     </div>
   );
 }
