@@ -7,15 +7,13 @@ from app.core.security import (
     RequestValidationMiddleware,
     get_cors_origins,
 )
-from app.api.routes.analysis import router as analysis_router
-from app.api.routes.auth import router as auth_router
 
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
     description="Aplicacion de Ciberseguridad Avanzada con IA",
-    docs_url="/docs" if settings.DEBUG else None,
-    redoc_url="/redoc" if settings.DEBUG else None,
+    docs_url="/docs",
+    redoc_url="/redoc",
 )
 
 # ============================================================
@@ -43,8 +41,11 @@ app.add_middleware(
 )
 
 # ============================================================
-# Routes
+# Routes - lazy import para startup rápido
 # ============================================================
+from app.api.routes.auth import router as auth_router
+from app.api.routes.analysis import router as analysis_router
+
 app.include_router(auth_router)
 app.include_router(analysis_router)
 

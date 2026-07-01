@@ -1,11 +1,13 @@
 """
 Analysis Orchestrator - Coordina todos los módulos de análisis
+Lazy-loading para startup rápido en Render Free tier
 """
 from __future__ import annotations
 
 import asyncio
 import uuid
 from datetime import datetime
+from typing import Optional
 
 from app.models.schemas import (
     AnalysisResult,
@@ -14,27 +16,75 @@ from app.models.schemas import (
     ThreatIntelResult,
 )
 from app.services.risk_engine import risk_engine
-from app.modules.url_analyzer.analyzer import URLAnalyzer
-from app.modules.content_analyzer.analyzer import ContentAnalyzer
-from app.modules.header_analyzer.analyzer import HeaderAnalyzer
-from app.modules.network_analyzer.analyzer import NetworkAnalyzer
-from app.modules.threat_intel.provider import ThreatIntelProvider
-from app.modules.qrishing.analyzer import QRishingAnalyzer
-from app.modules.deepfake.analyzer import DeepfakeAnalyzer
-from app.modules.ocr_nlp.analyzer import OCRNLPAnalyzer
 
 
 class AnalysisOrchestrator:
     def __init__(self):
-        self.url_analyzer = URLAnalyzer()
-        self.content_analyzer = ContentAnalyzer()
-        self.header_analyzer = HeaderAnalyzer()
-        self.network_analyzer = NetworkAnalyzer()
-        self.threat_intel = ThreatIntelProvider()
-        self.qrishing_analyzer = QRishingAnalyzer()
-        self.deepfake_analyzer = DeepfakeAnalyzer()
-        self.ocr_nlp_analyzer = OCRNLPAnalyzer()
+        self._url_analyzer = None
+        self._content_analyzer = None
+        self._header_analyzer = None
+        self._network_analyzer = None
+        self._threat_intel = None
+        self._qrishing_analyzer = None
+        self._deepfake_analyzer = None
+        self._ocr_nlp_analyzer = None
         self._analysis_history: list[AnalysisResult] = []
+
+    @property
+    def url_analyzer(self):
+        if self._url_analyzer is None:
+            from app.modules.url_analyzer.analyzer import URLAnalyzer
+            self._url_analyzer = URLAnalyzer()
+        return self._url_analyzer
+
+    @property
+    def content_analyzer(self):
+        if self._content_analyzer is None:
+            from app.modules.content_analyzer.analyzer import ContentAnalyzer
+            self._content_analyzer = ContentAnalyzer()
+        return self._content_analyzer
+
+    @property
+    def header_analyzer(self):
+        if self._header_analyzer is None:
+            from app.modules.header_analyzer.analyzer import HeaderAnalyzer
+            self._header_analyzer = HeaderAnalyzer()
+        return self._header_analyzer
+
+    @property
+    def network_analyzer(self):
+        if self._network_analyzer is None:
+            from app.modules.network_analyzer.analyzer import NetworkAnalyzer
+            self._network_analyzer = NetworkAnalyzer()
+        return self._network_analyzer
+
+    @property
+    def threat_intel(self):
+        if self._threat_intel is None:
+            from app.modules.threat_intel.provider import ThreatIntelProvider
+            self._threat_intel = ThreatIntelProvider()
+        return self._threat_intel
+
+    @property
+    def qrishing_analyzer(self):
+        if self._qrishing_analyzer is None:
+            from app.modules.qrishing.analyzer import QRishingAnalyzer
+            self._qrishing_analyzer = QRishingAnalyzer()
+        return self._qrishing_analyzer
+
+    @property
+    def deepfake_analyzer(self):
+        if self._deepfake_analyzer is None:
+            from app.modules.deepfake.analyzer import DeepfakeAnalyzer
+            self._deepfake_analyzer = DeepfakeAnalyzer()
+        return self._deepfake_analyzer
+
+    @property
+    def ocr_nlp_analyzer(self):
+        if self._ocr_nlp_analyzer is None:
+            from app.modules.ocr_nlp.analyzer import OCRNLPAnalyzer
+            self._ocr_nlp_analyzer = OCRNLPAnalyzer()
+        return self._ocr_nlp_analyzer
 
     async def analyze_url(self, url: str, deep_scan: bool = False) -> AnalysisResult:
         analysis_id = str(uuid.uuid4())[:8]
