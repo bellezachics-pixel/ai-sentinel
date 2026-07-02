@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { X, User, Lock, Mail, Loader2 } from "lucide-react";
 import { api, setToken } from "@/lib/api";
-import { cn } from "@/lib/utils";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -34,8 +33,8 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
       setToken(res.access_token);
       onSuccess();
       onClose();
-    } catch (err: any) {
-      setError(err.message || "Error de autenticacion");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error de autenticacion");
     } finally {
       setLoading(false);
     }

@@ -9,7 +9,6 @@ import {
   Loader2,
   AlertTriangle,
   CheckCircle,
-  Shield,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import type { AnalysisResult } from "@/lib/api";

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
+import Image from "next/image";
 import {
   QrCode,
   Upload,
@@ -128,9 +129,12 @@ export default function QRScanner() {
             <div className="relative inline-block">
               <div className="rounded-lg overflow-hidden border border-[#1e293b] bg-[#0a0e1a]">
                 {preview && (
-                  <img
+                  <Image
                     src={preview}
                     alt="QR Code preview"
+                    width={250}
+                    height={250}
+                    unoptimized
                     className="max-w-[250px] max-h-[250px] object-contain"
                   />
                 )}

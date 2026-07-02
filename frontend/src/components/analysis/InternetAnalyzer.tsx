@@ -22,7 +22,7 @@ const QUICK_CHECKS = [
 export default function InternetAnalyzer() {
   const [url, setUrl] = useState("");
   const [selectedCheck, setSelectedCheck] = useState(0);
-  const [deepScan, setDeepScan] = useState(true);
+  const [deepScan] = useState(true);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);

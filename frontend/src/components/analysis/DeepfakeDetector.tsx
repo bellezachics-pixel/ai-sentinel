@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
+import Image from "next/image";
 import {
   ScanEye,
-  Upload,
   Loader2,
   AlertTriangle,
   CheckCircle,
@@ -146,9 +146,12 @@ export default function DeepfakeDetector() {
               {preview ? (
                 <div className="relative">
                   <div className="rounded-lg overflow-hidden border border-[#1e293b] bg-[#0a0e1a]">
-                    <img
+                    <Image
                       src={preview}
                       alt="Preview"
+                      width={200}
+                      height={200}
+                      unoptimized
                       className="max-w-[200px] max-h-[200px] object-contain"
                     />
                   </div>

@@ -75,12 +75,11 @@ export default function StatsCards({
 }
 
 function StatCardItem({ card }: { card: StatCard }) {
-  const [displayValue, setDisplayValue] = useState(0);
+  const [displayValue, setDisplayValue] = useState(card.suffix ? card.value : 0);
   const Icon = card.icon;
 
   useEffect(() => {
     if (card.suffix) {
-      setDisplayValue(card.value);
       return;
     }
     const target = card.value;

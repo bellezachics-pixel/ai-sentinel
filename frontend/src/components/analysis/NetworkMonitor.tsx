@@ -15,6 +15,21 @@ import type { AnalysisResult } from "@/lib/api";
 import { cn, getRiskColor, getRiskBg } from "@/lib/utils";
 import RiskGauge from "@/components/dashboard/RiskGauge";
 
+interface NetworkMetadata {
+  target?: string;
+  hostname?: string;
+  latency?: number | { avg_latency_ms?: number | null };
+  dns?: {
+    resolver?: string;
+    resolved_ips?: string[];
+  };
+  tls_fingerprint?: string;
+}
+
+type NetworkFinding = AnalysisResult["findings"][number] & {
+  detail?: string;
+};
+
 export default function NetworkMonitor() {
   const [targetIp, setTargetIp] = useState("");
   const [loading, setLoading] = useState(false);
@@ -37,7 +52,11 @@ export default function NetworkMonitor() {
     }
   };
 
-  const resultMeta = result?.metadata as any;
+  const resultMeta = result?.metadata as NetworkMetadata | undefined;
+  const latency =
+    typeof resultMeta?.latency === "number"
+      ? resultMeta.latency
+      : resultMeta?.latency?.avg_latency_ms;
 
   return (
     <div className="space-y-6 animate-fade-in-up">
@@ -133,7 +152,7 @@ export default function NetworkMonitor() {
                 <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#0a0e1a]/50">
                   <span className="text-xs text-slate-400">Latencia</span>
                   <span className="text-xs font-medium text-slate-300">
-                    {typeof resultMeta?.latency === "number" ? `${resultMeta.latency.toFixed(1)} ms` : "N/A"}
+                    {typeof latency === "number" ? `${latency.toFixed(1)} ms` : "N/A"}
                   </span>
                 </div>
               </div>
@@ -197,7 +216,7 @@ export default function NetworkMonitor() {
                         {String(finding.severity)}
                       </p>
                       <p className="text-xs text-slate-300 mt-0.5">
-                        {finding.description || (finding as any).detail || finding.type}
+                        {finding.description || (finding as NetworkFinding).detail || finding.type}
                       </p>
                     </div>
                   </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Newspaper, Search, Loader2, CheckCircle, AlertTriangle, BookOpen, Shield } from "lucide-react";
+import { Newspaper, Search, Loader2, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface NewsResult {

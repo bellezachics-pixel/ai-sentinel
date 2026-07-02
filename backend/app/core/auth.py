@@ -237,6 +237,21 @@ async def require_auth(
     return user
 
 
+async def require_analysis_access(
+    user: Optional[UserInDB] = Depends(get_current_user),
+) -> Optional[UserInDB]:
+    """Requiere JWT solo cuando REQUIRE_AUTH_FOR_ANALYSIS esta activo."""
+    if not settings.REQUIRE_AUTH_FOR_ANALYSIS:
+        return user
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Autenticacion requerida para analisis",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return user
+
+
 async def require_admin(
     user: UserInDB = Depends(require_auth),
 ) -> UserInDB:

@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"
     PORT: int = 8000
     CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://127.0.0.1:3000", "https://frontend-kappa-wheat-28.vercel.app", "https://frontend-odqi9ejl1-bellezachics-pixels-projects.vercel.app"]
+    REQUIRE_AUTH_FOR_ANALYSIS: bool = False
 
     # Database
     DATABASE_URL: str = "sqlite+aiosqlite:///./ai_sentinel.db"
@@ -24,6 +25,17 @@ class Settings(BaseSettings):
 
     # OpenAI
     OPENAI_API_KEY: Optional[str] = None
+    OPENAI_CHAT_MODEL: str = "gpt-4o-mini"
+    OPENAI_VISION_MODEL: str = "gpt-4o-mini"
+
+    # Fact checking
+    GOOGLE_FACT_CHECK_API_KEY: Optional[str] = None
+
+    # Phone intelligence
+    NUMVERIFY_API_KEY: Optional[str] = None
+    TWILIO_ACCOUNT_SID: Optional[str] = None
+    TWILIO_AUTH_TOKEN: Optional[str] = None
+    TWILIO_LOOKUP_FROM_COUNTRY: str = "US"
 
     # Risk Engine Weights
     WEIGHT_URL: float = 0.30

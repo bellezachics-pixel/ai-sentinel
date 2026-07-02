@@ -24,7 +24,7 @@ export default function URLScanner() {
       const data = await api.analyzeUrl(url.trim(), deepScan);
       setResult(data);
       setHistory((prev) => [data, ...prev].slice(0, 10));
-    } catch (err) {
+    } catch {
       setError(
         "No se pudo conectar con el servidor. Verifica que la API esté activa."
       );

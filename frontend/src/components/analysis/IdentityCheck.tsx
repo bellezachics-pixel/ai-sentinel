@@ -3,10 +3,16 @@
 import { useState } from "react";
 import {
   Fingerprint, Mail, Phone, User, Key, Search, Loader2,
-  AlertTriangle, CheckCircle, Shield, ShieldAlert,
+  CheckCircle, Shield, ShieldAlert, AlertTriangle,
 } from "lucide-react";
 import { api, type AnalysisResult } from "@/lib/api";
-import { cn, getRiskColor, getRiskBg } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+
+interface BreachInfo {
+  name: string;
+  date: string;
+  data: string[] | string;
+}
 
 const CHECKS = [
   { id: "email", label: "Correo filtrado", icon: Mail, placeholder: "tu@correo.com", description: "Busca si tu correo aparecio en filtraciones de datos" },
@@ -39,7 +45,7 @@ export default function IdentityCheck() {
     }
   };
 
-  const resultMeta = result?.metadata as any;
+  const resultMeta = result?.metadata as { breaches?: BreachInfo[] } | undefined;
   const breaches = resultMeta?.breaches || [];
   const found = result?.findings.some((f) => f.type === "breach_found");
   const apiError = result?.findings.some((f) => f.type === "identity_check_error");
@@ -157,7 +163,7 @@ export default function IdentityCheck() {
 
           {found && (
             <div className="space-y-3 mt-4">
-              {breaches.map((breach: any, i: number) => (
+              {breaches.map((breach, i) => (
                 <div key={i} className="bg-[#111827] rounded-lg p-4 border border-red-500/10">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-semibold text-slate-200">{breach.name}</span>

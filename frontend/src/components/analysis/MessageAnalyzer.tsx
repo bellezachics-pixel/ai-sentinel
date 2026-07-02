@@ -28,11 +28,7 @@ export default function MessageAnalyzer() {
     setError(null);
     setResult(null);
     try {
-      const data = await api.analyzeEmail({
-        sender: `${platform}@mensaje`,
-        subject: `Mensaje de ${platform}`,
-        body: message.trim(),
-      });
+      const data = await api.analyzeMessage({ platform, body: message.trim() });
       setResult(data);
     } catch {
       setError("No se pudo conectar con el servidor.");

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Shield,
   LayoutDashboard,
@@ -103,11 +103,7 @@ interface SidebarProps {
 export default function Sidebar({ activeView, onViewChange, onLoginClick }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-
-  useEffect(() => {
-    setIsLoggedIn(!!getToken());
-  }, []);
+  const [isLoggedIn, setIsLoggedIn] = useState(() => !!getToken());
 
   const toggleGroup = (title: string) => {
     setCollapsedGroups((prev) => ({ ...prev, [title]: !prev[title] }));

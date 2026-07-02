@@ -66,9 +66,29 @@ VIRUSTOTAL_API_KEY=tu_api_key
 URLSCAN_API_KEY=tu_api_key
 ABUSEIPDB_API_KEY=tu_api_key
 OPENAI_API_KEY=tu_api_key
+OPENAI_CHAT_MODEL=gpt-4o-mini
+OPENAI_VISION_MODEL=gpt-4o-mini
+GOOGLE_FACT_CHECK_API_KEY=tu_api_key
+NUMVERIFY_API_KEY=tu_api_key
+TWILIO_ACCOUNT_SID=tu_account_sid
+TWILIO_AUTH_TOKEN=tu_auth_token
+TWILIO_LOOKUP_FROM_COUNTRY=US
+REQUIRE_AUTH_FOR_ANALYSIS=false
 ```
 
 La app funciona sin API keys con capacidades reducidas (analisis local solamente).
+
+Para proteger endpoints de analisis, chat y dashboard con JWT, configurar:
+
+```env
+REQUIRE_AUTH_FOR_ANALYSIS=true
+```
+
+Puedes revisar que integraciones quedaron configuradas en:
+
+```bash
+curl http://localhost:8000/api/v1/integrations/status
+```
 
 ## Motor de Riesgo
 

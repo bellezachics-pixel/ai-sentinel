@@ -16,6 +16,7 @@ class RiskLevel(str, Enum):
 class AnalysisType(str, Enum):
     URL = "url"
     EMAIL = "email"
+    MESSAGE = "message"
     FILE = "file"
     QR_CODE = "qr_code"
     NETWORK = "network"
@@ -35,6 +36,11 @@ class EmailAnalysisRequest(BaseModel):
     headers: Optional[dict] = None
 
 
+class MessageAnalysisRequest(BaseModel):
+    platform: str = Field(default="message", max_length=50)
+    body: str = Field(..., min_length=1, max_length=8000)
+
+
 class FileAnalysisRequest(BaseModel):
     filename: str
     content_type: str = ""
@@ -52,18 +58,26 @@ class IdentityCheckRequest(BaseModel):
     check_type: str = "email"  # email, phone, username, password
 
 
-class ChatMessage(BaseModel):
-    role: str = "user"  # user o assistant
-    content: str
-
-
-class ChatRequest(BaseModel):
-    messages: list[ChatMessage]
-
-
 class ThreatIntelRequest(BaseModel):
     indicator: str
     indicator_type: str = "url"
+
+
+class ChatMessage(BaseModel):
+    role: str = Field(..., pattern="^(user|assistant|system)$")
+    content: str = Field(..., min_length=1, max_length=4000)
+
+
+class ChatRequest(BaseModel):
+    message: str = Field(..., min_length=1, max_length=4000)
+    history: List[ChatMessage] = []
+
+
+class ChatResponse(BaseModel):
+    reply: str
+    provider: str = "local"
+    model: Optional[str] = None
+    configured: bool = False
 
 
 class RiskScore(BaseModel):

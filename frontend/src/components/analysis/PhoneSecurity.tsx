@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import {
-  Smartphone, Shield, Eye, AppWindow, Lock, Globe, Wifi,
+  Smartphone, Shield, Eye, AppWindow, Lock, Globe,
   AlertTriangle, CheckCircle, Loader2, RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -32,7 +32,6 @@ export default function PhoneSecurity() {
   const runScan = async () => {
     setScanning(true);
     setCompleted(false);
-    const results: Array<"safe" | "warning" | "danger"> = [];
     const details = [
       "Sistema operativo actualizado, sin jailbreak detectado",
       "No se detectaron procesos sospechosos ni software espia",

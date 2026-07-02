@@ -53,24 +53,30 @@ export default function SentinelChat() {
     setInput("");
     setLoading(true);
 
+    const history = messages
+      .filter((msg) => msg.id !== INITIAL_MSG.id)
+      .map((msg) => ({ role: msg.role, content: msg.content }));
+
     try {
-      const history = messages
-        .filter((m) => m.id !== "0")
-        .concat(userMsg)
-        .slice(-10)
-        .map((m) => ({ role: m.role, content: m.content }));
-
-      const data = await api.chat(history);
-
+      const response = await api.chat(userMsg.content, history);
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: data.response,
+        content: response.reply,
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, aiResponse]);
-    } catch (err: any) {
-      setError(err.message || "Error al consultar a Sentinel IA");
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content:
+            "No pude conectar con Sentinel IA ahora mismo. Revisa que el backend este activo y que NEXT_PUBLIC_API_URL apunte a tu API.",
+          timestamp: new Date(),
+        },
+      ]);
     } finally {
       setLoading(false);
     }

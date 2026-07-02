@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import type { DashboardStats, AnalysisResult } from "@/lib/api";
+import type { DashboardStats } from "@/lib/api";
 import StatsCards from "./StatsCards";
 import RiskGauge from "./RiskGauge";
 import ThreatDistribution from "./ThreatDistribution";
@@ -120,12 +120,10 @@ const MOCK_STATS: DashboardStats = {
 
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats>(MOCK_STATS);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const fetchStats = async () => {
     setLoading(true);
-    setError(null);
     try {
       const data = await api.getDashboardStats();
       setStats(data);
@@ -138,7 +136,29 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    fetchStats();
+    let isMounted = true;
+
+    api
+      .getDashboardStats()
+      .then((data) => {
+        if (isMounted) {
+          setStats(data);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setStats(MOCK_STATS);
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const overallRisk =

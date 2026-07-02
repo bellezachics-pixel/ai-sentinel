@@ -1,16 +1,18 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, Bell, Wifi, WifiOff, Clock } from "lucide-react";
+import { LogOut, Search, Bell, Wifi, WifiOff, Clock, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface HeaderProps {
   title?: string;
+  username?: string;
+  onLogout?: () => void;
 }
 
-export default function Header({ title }: HeaderProps) {
+export default function Header({ title, username, onLogout }: HeaderProps) {
   const [time, setTime] = useState("");
-  const [isSecure, setIsSecure] = useState(true);
+  const isSecure = true;
   const [searchQuery, setSearchQuery] = useState("");
   const [notifications] = useState(3);
 
@@ -54,6 +56,13 @@ export default function Header({ title }: HeaderProps) {
 
       {/* Right: Status indicators */}
       <div className="flex items-center gap-5">
+        {username && (
+          <div className="hidden md:flex items-center gap-2 rounded-lg border border-[#1e293b] bg-[#111827] px-3 py-1.5">
+            <User className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="text-xs text-slate-300">{username}</span>
+          </div>
+        )}
+
         {/* Network status */}
         <div className="flex items-center gap-2">
           {isSecure ? (
@@ -94,6 +103,16 @@ export default function Header({ title }: HeaderProps) {
           <Clock className="w-3.5 h-3.5" />
           <span className="text-xs text-mono tabular-nums">{time}</span>
         </div>
+
+        {onLogout && (
+          <button
+            onClick={onLogout}
+            className="p-1.5 rounded-lg hover:bg-white/5 transition-colors"
+            title="Cerrar sesion"
+          >
+            <LogOut className="w-4 h-4 text-slate-400 hover:text-red-400" />
+          </button>
+        )}
       </div>
     </header>
   );

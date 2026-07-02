@@ -33,7 +33,7 @@ export default function FileAnalyzer() {
     setError(null);
     setResult(null);
     try {
-      const data = await api.analyzeMedia(file);
+      const data = await api.analyzeFile(file);
       setResult(data);
     } catch {
       setError("No se pudo analizar el archivo.");
@@ -53,6 +53,15 @@ export default function FileAnalyzer() {
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
+
+  const fileMeta = result?.metadata as
+    | {
+        sha256?: string;
+        size_bytes?: number;
+        extension?: string;
+        virustotal_available?: boolean;
+      }
+    | undefined;
 
   return (
     <div className="space-y-6 animate-fade-in-up">
@@ -140,6 +149,24 @@ export default function FileAnalyzer() {
           </div>
           <div className="rounded-xl bg-[#111827] border border-[#1e293b] p-5 lg:col-span-2">
             <h3 className="text-sm font-semibold text-slate-300 mb-3">Resultados</h3>
+            {fileMeta && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-4">
+                <div className="rounded-lg bg-[#0a0e1a]/50 p-3">
+                  <p className="text-[10px] uppercase text-slate-500 mb-1">SHA-256</p>
+                  <p className="text-xs text-slate-300 font-mono break-all">{fileMeta.sha256 || "N/A"}</p>
+                </div>
+                <div className="rounded-lg bg-[#0a0e1a]/50 p-3">
+                  <p className="text-[10px] uppercase text-slate-500 mb-1">Reputacion</p>
+                  <p className="text-xs text-slate-300">
+                    VirusTotal {fileMeta.virustotal_available ? "consultado" : "no configurado"}
+                  </p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    {typeof fileMeta.size_bytes === "number" ? formatFileSize(fileMeta.size_bytes) : "N/A"}
+                    {fileMeta.extension ? ` · .${fileMeta.extension}` : ""}
+                  </p>
+                </div>
+              </div>
+            )}
             {result.findings.length === 0 ? (
               <div className="flex items-center gap-2 text-emerald-400 py-4">
                 <CheckCircle className="w-5 h-5" />
