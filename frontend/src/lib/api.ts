@@ -82,6 +82,15 @@ export interface DashboardStats {
   };
 }
 
+export interface IntegrationStatusItem {
+  configured: boolean;
+  provider: string;
+  model?: string;
+  country?: string;
+}
+
+export type IntegrationsStatus = Record<string, IntegrationStatusItem>;
+
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
@@ -248,6 +257,9 @@ export const api = {
     ),
 
   getDashboardStats: () => apiFetch<DashboardStats>("/api/v1/dashboard/stats"),
+
+  getIntegrationsStatus: () =>
+    apiFetch<IntegrationsStatus>("/api/v1/integrations/status"),
 
   chat: (message: string, history: ChatMessage[] = []) =>
     apiFetch<ChatResponse>("/api/v1/chat", {

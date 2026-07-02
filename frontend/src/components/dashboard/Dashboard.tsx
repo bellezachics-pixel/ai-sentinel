@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import type { DashboardStats } from "@/lib/api";
+import type { DashboardStats, IntegrationsStatus as IntegrationsStatusType } from "@/lib/api";
 import StatsCards from "./StatsCards";
 import RiskGauge from "./RiskGauge";
 import ThreatDistribution from "./ThreatDistribution";
 import RecentAnalyses from "./RecentAnalyses";
 import NetworkStatus from "./NetworkStatus";
+import IntegrationsStatus from "./IntegrationsStatus";
 import { RefreshCw } from "lucide-react";
 
 const MOCK_STATS: DashboardStats = {
@@ -120,13 +121,19 @@ const MOCK_STATS: DashboardStats = {
 
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats>(MOCK_STATS);
+  const [integrations, setIntegrations] =
+    useState<IntegrationsStatusType | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchStats = async () => {
     setLoading(true);
     try {
-      const data = await api.getDashboardStats();
+      const [data, integrationData] = await Promise.all([
+        api.getDashboardStats(),
+        api.getIntegrationsStatus(),
+      ]);
       setStats(data);
+      setIntegrations(integrationData);
     } catch {
       // Use mock data silently when API is unavailable
       setStats(MOCK_STATS);
@@ -138,11 +145,11 @@ export default function Dashboard() {
   useEffect(() => {
     let isMounted = true;
 
-    api
-      .getDashboardStats()
-      .then((data) => {
+    Promise.all([api.getDashboardStats(), api.getIntegrationsStatus()])
+      .then(([data, integrationData]) => {
         if (isMounted) {
           setStats(data);
+          setIntegrations(integrationData);
         }
       })
       .catch(() => {
@@ -206,6 +213,10 @@ export default function Dashboard() {
         activeMonitors={stats.active_monitors}
         networkSecure={stats.network_status.is_secure}
       />
+
+      <div className="rounded-xl bg-[#111827] border border-[#1e293b] p-5">
+        <IntegrationsStatus integrations={integrations} loading={loading} />
+      </div>
 
       {/* Middle Row: Risk Gauge + Threat Distribution + Network Status */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
