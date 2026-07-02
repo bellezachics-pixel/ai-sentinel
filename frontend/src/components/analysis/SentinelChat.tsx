@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { MessageCircle, Send, Shield, Bot, User, Loader2 } from "lucide-react";
+import { MessageCircle, Send, Bot, User, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { api } from "@/lib/api";
 
 interface Message {
   id: string;
@@ -18,32 +19,19 @@ const INITIAL_MSG: Message = {
   timestamp: new Date(),
 };
 
-const AI_RESPONSES: Record<string, string> = {
-  phishing: "El phishing es un ataque donde los ciberdelincuentes se hacen pasar por empresas legitimas para robar tus datos.\n\nRecomendaciones:\n1. Nunca hagas clic en enlaces de correos sospechosos\n2. Verifica la URL del remitente\n3. Los bancos NUNCA piden contrasenas por correo\n4. Usa autenticacion de 2 factores\n5. Reporta correos sospechosos",
-  password: "Para crear una contrasena segura:\n\n1. Minimo 12 caracteres\n2. Mezcla mayusculas, minusculas, numeros y simbolos\n3. No uses datos personales (nombre, fecha de nacimiento)\n4. No reutilices contrasenas\n5. Usa un gestor de contrasenas como Bitwarden o 1Password\n6. Activa 2FA en todas tus cuentas importantes",
-  vpn: "Una VPN (Red Privada Virtual) encripta tu conexion a internet.\n\nCuando usarla:\n- En redes WiFi publicas (cafeterias, aeropuertos)\n- Para proteger tu privacidad del ISP\n- Para evitar rastreo publicitario\n\nRecomendaciones:\n- Usa VPNs de pago confiables (NordVPN, ExpressVPN, ProtonVPN)\n- Evita VPNs gratuitas (pueden vender tus datos)\n- Verifica que no guarden logs",
-  wifi: "Para proteger tu red WiFi:\n\n1. Usa WPA3 o WPA2 (nunca WEP)\n2. Cambia la contrasena por defecto del router\n3. Cambia el nombre de la red (SSID)\n4. Desactiva WPS\n5. Actualiza el firmware del router\n6. Usa una contrasena fuerte para el WiFi\n7. Crea una red de invitados separada\n8. Revisa periodicamente los dispositivos conectados",
-  malware: "Senales de que tu dispositivo puede tener malware:\n\n- Se vuelve muy lento sin razon\n- Aparecen pop-ups o anuncios inesperados\n- Apps que no instalaste\n- Bateria se agota rapido\n- Uso excesivo de datos\n\nQue hacer:\n1. Escanea con un antivirus confiable\n2. Desinstala apps sospechosas\n3. Actualiza tu sistema operativo\n4. Cambia tus contrasenas desde otro dispositivo\n5. Considera un reset de fabrica si el problema persiste",
-};
-
-function getAIResponse(input: string): string {
-  const lower = input.toLowerCase();
-  for (const [key, response] of Object.entries(AI_RESPONSES)) {
-    if (lower.includes(key)) return response;
-  }
-  if (lower.includes("hola") || lower.includes("hi")) {
-    return "Hola! Estoy aqui para ayudarte con cualquier duda de ciberseguridad. Que necesitas saber?";
-  }
-  if (lower.includes("gracias")) {
-    return "De nada! Recuerda que la seguridad digital es un proceso continuo. Si tienes mas dudas, aqui estoy.";
-  }
-  return `Entiendo tu preocupacion sobre "${input.slice(0, 50)}..."\n\nAqui van algunas recomendaciones generales:\n\n1. Mantén tus dispositivos y apps actualizados\n2. Usa contrasenas unicas y fuertes\n3. Activa la autenticacion de 2 factores\n4. No compartas informacion sensible en redes publicas\n5. Verifica siempre las fuentes antes de hacer clic\n\nQuieres que profundice en algun tema en especifico?`;
-}
+const QUICK_QUESTIONS = [
+  "Que es phishing?",
+  "Como crear password segura?",
+  "Necesito VPN?",
+  "Proteger mi WiFi",
+  "Tengo malware?",
+];
 
 export default function SentinelChat() {
   const [messages, setMessages] = useState<Message[]>([INITIAL_MSG]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const messagesEnd = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -52,26 +40,40 @@ export default function SentinelChat() {
 
   const handleSend = async () => {
     if (!input.trim() || loading) return;
+    setError(null);
+
     const userMsg: Message = {
       id: Date.now().toString(),
       role: "user",
       content: input.trim(),
       timestamp: new Date(),
     };
+
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setLoading(true);
 
-    await new Promise((r) => setTimeout(r, 1000 + Math.random() * 1500));
+    try {
+      const history = messages
+        .filter((m) => m.id !== "0")
+        .concat(userMsg)
+        .slice(-10)
+        .map((m) => ({ role: m.role, content: m.content }));
 
-    const aiResponse: Message = {
-      id: (Date.now() + 1).toString(),
-      role: "assistant",
-      content: getAIResponse(userMsg.content),
-      timestamp: new Date(),
-    };
-    setMessages((prev) => [...prev, aiResponse]);
-    setLoading(false);
+      const data = await api.chat(history);
+
+      const aiResponse: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: data.response,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, aiResponse]);
+    } catch (err: any) {
+      setError(err.message || "Error al consultar a Sentinel IA");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -117,12 +119,17 @@ export default function SentinelChat() {
             </div>
           </div>
         )}
+        {error && (
+          <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
+            {error}
+          </div>
+        )}
         <div ref={messagesEnd} />
       </div>
 
       {/* Quick suggestions */}
       <div className="flex gap-2 mt-3 overflow-x-auto pb-2">
-        {["Que es phishing?", "Como crear password segura?", "Necesito VPN?", "Proteger mi WiFi", "Tengo malware?"].map((q) => (
+        {QUICK_QUESTIONS.map((q) => (
           <button
             key={q}
             onClick={() => { setInput(q); }}

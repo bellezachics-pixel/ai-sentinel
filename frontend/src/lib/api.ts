@@ -162,6 +162,12 @@ export const api = {
 
   healthCheck: () => apiFetch<{ status: string }>("/api/v1/health"),
 
+  chat: (messages: { role: string; content: string }[]) =>
+    apiFetch<{ response: string }>("/api/v1/chat", {
+      method: "POST",
+      body: JSON.stringify({ messages }),
+    }),
+
   login: (username: string, password: string) =>
     apiFetch<AuthResponse>("/api/v1/auth/login", {
       method: "POST",

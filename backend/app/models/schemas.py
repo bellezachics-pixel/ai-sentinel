@@ -52,6 +52,15 @@ class IdentityCheckRequest(BaseModel):
     check_type: str = "email"  # email, phone, username, password
 
 
+class ChatMessage(BaseModel):
+    role: str = "user"  # user o assistant
+    content: str
+
+
+class ChatRequest(BaseModel):
+    messages: list[ChatMessage]
+
+
 class ThreatIntelRequest(BaseModel):
     indicator: str
     indicator_type: str = "url"

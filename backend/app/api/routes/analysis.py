@@ -6,9 +6,11 @@ from app.models.schemas import (
     NetworkScanRequest,
     ThreatIntelRequest,
     IdentityCheckRequest,
+    ChatRequest,
 )
 from app.services.orchestrator import orchestrator
 from app.core.auth import optional_or_required_auth, UserInDB
+from app.modules.chat import chat_with_sentinel
 
 router = APIRouter(prefix="/api/v1", tags=["Analysis"])
 
@@ -124,6 +126,20 @@ async def get_dashboard_stats(user: Optional[UserInDB] = AuthDep):
     try:
         stats = await orchestrator.get_dashboard_stats()
         return stats
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/chat")
+async def chat(
+    request: ChatRequest,
+    user: Optional[UserInDB] = AuthDep,
+):
+    """Chat con Sentinel IA usando OpenAI."""
+    try:
+        messages = [{"role": m.role, "content": m.content} for m in request.messages]
+        response = await chat_with_sentinel(messages)
+        return {"response": response}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
