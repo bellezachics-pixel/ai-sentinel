@@ -9,7 +9,7 @@ USER_AGENT = "AI-Sentinel-App"
 
 class HIBPClient:
     def __init__(self, api_key: str | None = None):
-        self.api_key = api_key or settings.HIBP_API_KEY
+        self.api_key = (api_key or settings.HIBP_API_KEY or "").strip()
 
     async def check_email(self, email: str) -> dict[str, Any]:
         """Check email breaches via HIBP."""
