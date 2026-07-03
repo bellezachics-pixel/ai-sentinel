@@ -1,19 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  ArrowRight,
-  Bot,
-  FileSearch,
-  Globe,
-  Lock,
-  Loader2,
-  LogIn,
-  Mail,
-  MessageSquare,
-  Shield,
-  UserPlus,
-} from "lucide-react";
+import { Lock, Loader2, LogIn, Mail, Shield, UserPlus } from "lucide-react";
 import {
   api,
   clearAuthTokens,
@@ -33,7 +21,6 @@ interface AuthGateProps {
 
 export default function AuthGate({ children }: AuthGateProps) {
   const [mode, setMode] = useState<"login" | "register">("login");
-  const [showAuth, setShowAuth] = useState(false);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -129,136 +116,9 @@ export default function AuthGate({ children }: AuthGateProps) {
     return <>{children({ user, onLogout: handleLogout })}</>;
   }
 
-  if (!showAuth) {
-    return (
-      <div className="min-h-screen bg-[#0a0e1a] text-slate-200">
-        <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-cyan-500/30 bg-cyan-500/10">
-              <Shield className="h-5 w-5 text-cyan-400" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-white">AI Sentinel</p>
-              <p className="text-[11px] text-cyan-400/70">Ciberseguridad con IA</p>
-            </div>
-          </div>
-          <button
-            onClick={() => setShowAuth(true)}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-[#1e293b] bg-[#111827] px-4 text-sm text-slate-200 transition-colors hover:border-cyan-500/30 hover:text-cyan-300"
-          >
-            Entrar
-            <ArrowRight className="h-4 w-4" />
-          </button>
-        </header>
-
-        <main className="mx-auto grid min-h-[calc(100vh-84px)] max-w-6xl grid-cols-1 gap-8 px-6 pb-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
-          <section className="py-6">
-            <div className="mb-5 inline-flex items-center gap-2 rounded-lg border border-cyan-500/20 bg-cyan-500/10 px-3 py-2 text-xs font-medium text-cyan-300">
-              <Bot className="h-4 w-4" />
-              Analisis inteligente para clientes y negocios
-            </div>
-            <h1 className="max-w-3xl text-4xl font-bold leading-tight text-white md:text-6xl">
-              Centinela digital para detectar riesgos antes de hacer clic.
-            </h1>
-            <p className="mt-5 max-w-2xl text-base leading-7 text-slate-400">
-              Revisa URLs, mensajes, archivos, identidad digital y senales de fraude desde un panel instalable como app. Ideal para demos, clientes y reportes rapidos.
-            </p>
-
-            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-              <button
-                onClick={handleGoogleLogin}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-white px-5 text-sm font-semibold text-slate-950 transition-colors hover:bg-slate-100"
-              >
-                <Mail className="h-4 w-4 text-red-500" />
-                Continuar con Google
-              </button>
-              <button
-                onClick={() => setShowAuth(true)}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-cyan-600 px-5 text-sm font-semibold text-white transition-colors hover:bg-cyan-500"
-              >
-                Crear cuenta
-                <ArrowRight className="h-4 w-4" />
-              </button>
-              <InstallPrompt />
-            </div>
-
-            {error && (
-              <p className="mt-4 rounded-lg border border-red-500/20 bg-red-500/5 p-3 text-xs text-red-400">
-                {error}
-              </p>
-            )}
-
-            <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
-              {[
-                { label: "URLs y phishing", icon: Globe },
-                { label: "Mensajes sospechosos", icon: MessageSquare },
-                { label: "Archivos y hashes", icon: FileSearch },
-              ].map((item) => (
-                <div
-                  key={item.label}
-                  className="rounded-lg border border-[#1e293b] bg-[#111827] p-4"
-                >
-                  <item.icon className="mb-3 h-5 w-5 text-cyan-400" />
-                  <p className="text-sm font-medium text-slate-200">{item.label}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="rounded-xl border border-[#1e293b] bg-[#0d1117] p-5">
-            <div className="mb-4 flex items-center justify-between">
-              <p className="text-sm font-semibold text-slate-200">Panel de riesgo</p>
-              <span className="rounded-md bg-emerald-500/10 px-2 py-1 text-[11px] font-medium text-emerald-400">
-                PWA lista
-              </span>
-            </div>
-            <div className="space-y-3">
-              {[
-                ["URL sospechosa", "Alto", "78"],
-                ["Mensaje de WhatsApp", "Medio", "46"],
-                ["Archivo PDF", "Bajo", "18"],
-                ["Login con Google", "Activo", "OK"],
-              ].map(([name, level, score]) => (
-                <div
-                  key={name}
-                  className="grid grid-cols-[1fr_auto_auto] items-center gap-3 rounded-lg border border-[#1e293b] bg-[#0a0e1a] p-3"
-                >
-                  <span className="text-sm text-slate-300">{name}</span>
-                  <span className="text-xs text-slate-500">{level}</span>
-                  <span className="text-sm font-semibold text-cyan-300">{score}</span>
-                </div>
-              ))}
-            </div>
-            <div className="mt-5 rounded-lg border border-cyan-500/20 bg-cyan-500/10 p-4">
-              <p className="text-sm font-medium text-cyan-300">Reporte listo para cliente</p>
-              <p className="mt-1 text-xs leading-5 text-slate-400">
-                Resume hallazgos, riesgo y recomendaciones en lenguaje claro para tomar accion rapido.
-              </p>
-            </div>
-          </section>
-        </main>
-
-        <footer className="mx-auto flex max-w-6xl flex-col gap-3 border-t border-[#1e293b] px-6 py-5 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-          <span>AI Sentinel ayuda a evaluar riesgos, no reemplaza asesoria profesional.</span>
-          <div className="flex gap-4">
-            <a className="hover:text-cyan-300" href="/privacy">Privacidad</a>
-            <a className="hover:text-cyan-300" href="/terms">Terminos</a>
-            <a className="hover:text-cyan-300" href="/responsible-use">Uso responsable</a>
-          </div>
-        </footer>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-[#0a0e1a] text-slate-200 flex items-center justify-center p-6">
       <div className="w-full max-w-md rounded-xl border border-[#1e293b] bg-[#0d1117] p-6">
-        <button
-          onClick={() => setShowAuth(false)}
-          className="mb-5 text-xs text-slate-500 transition-colors hover:text-cyan-300"
-        >
-          Volver
-        </button>
         <div className="flex items-center gap-3 mb-6">
           <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-cyan-500/30 bg-cyan-500/10">
             <Shield className="h-6 w-6 text-cyan-400" />
@@ -361,6 +221,16 @@ export default function AuthGate({ children }: AuthGateProps) {
             La contrasena debe tener mayuscula, numero y caracter especial.
           </p>
         )}
+
+        <div className="mt-5">
+          <InstallPrompt />
+        </div>
+
+        <div className="mt-5 flex flex-wrap justify-center gap-x-4 gap-y-2 text-xs text-slate-600">
+          <a className="hover:text-cyan-300" href="/privacy">Privacidad</a>
+          <a className="hover:text-cyan-300" href="/terms">Terminos</a>
+          <a className="hover:text-cyan-300" href="/responsible-use">Uso responsable</a>
+        </div>
       </div>
     </div>
   );
