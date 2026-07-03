@@ -8,6 +8,7 @@ import { api } from "@/lib/api";
 import type { AnalysisResult } from "@/lib/api";
 import { cn, getRiskColor, getRiskBg } from "@/lib/utils";
 import RiskGauge from "@/components/dashboard/RiskGauge";
+import SecurityReport from "@/components/analysis/SecurityReport";
 
 const PLATFORMS = [
   { id: "whatsapp", label: "WhatsApp", color: "text-emerald-400" },
@@ -105,44 +106,47 @@ export default function MessageAnalyzer() {
       )}
 
       {result && !loading && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="rounded-xl bg-[#111827] border border-[#1e293b] p-5 flex items-center justify-center">
-            <RiskGauge score={result.risk_score.total} size={160} />
-          </div>
-          <div className="rounded-xl bg-[#111827] border border-[#1e293b] p-5 lg:col-span-2">
-            <h3 className="text-sm font-semibold text-slate-300 mb-3">Resultados</h3>
-            {result.findings.length === 0 ? (
-              <div className="flex items-center gap-2 text-emerald-400 py-4">
-                <CheckCircle className="w-5 h-5" />
-                <span className="text-sm">El mensaje parece seguro</span>
-              </div>
-            ) : (
-              <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                {result.findings.map((f, i) => (
-                  <div key={i} className={cn("flex items-start gap-3 p-3 rounded-lg border", getRiskBg(f.severity))}>
-                    <AlertTriangle className={cn("w-4 h-4 shrink-0 mt-0.5", getRiskColor(f.severity))} />
-                    <div>
-                      <p className="text-xs font-medium text-slate-300">{f.type}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">{f.description}</p>
+        <>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="rounded-xl bg-[#111827] border border-[#1e293b] p-5 flex items-center justify-center">
+              <RiskGauge score={result.risk_score.total} size={160} />
+            </div>
+            <div className="rounded-xl bg-[#111827] border border-[#1e293b] p-5 lg:col-span-2">
+              <h3 className="text-sm font-semibold text-slate-300 mb-3">Resultados</h3>
+              {result.findings.length === 0 ? (
+                <div className="flex items-center gap-2 text-emerald-400 py-4">
+                  <CheckCircle className="w-5 h-5" />
+                  <span className="text-sm">El mensaje parece seguro</span>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                  {result.findings.map((f, i) => (
+                    <div key={i} className={cn("flex items-start gap-3 p-3 rounded-lg border", getRiskBg(f.severity))}>
+                      <AlertTriangle className={cn("w-4 h-4 shrink-0 mt-0.5", getRiskColor(f.severity))} />
+                      <div>
+                        <p className="text-xs font-medium text-slate-300">{f.type}</p>
+                        <p className="text-xs text-slate-400 mt-0.5">{f.description}</p>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-            {result.recommendations.length > 0 && (
-              <div className="mt-4 pt-4 border-t border-[#1e293b]">
-                <h4 className="text-xs font-semibold text-slate-400 uppercase mb-2">Recomendaciones</h4>
-                <ul className="space-y-1.5">
-                  {result.recommendations.map((r, i) => (
-                    <li key={i} className="text-xs text-slate-400 flex items-start gap-2">
-                      <span className="text-cyan-400">&#8226;</span>{r}
-                    </li>
                   ))}
-                </ul>
-              </div>
-            )}
+                </div>
+              )}
+              {result.recommendations.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-[#1e293b]">
+                  <h4 className="text-xs font-semibold text-slate-400 uppercase mb-2">Recomendaciones</h4>
+                  <ul className="space-y-1.5">
+                    {result.recommendations.map((r, i) => (
+                      <li key={i} className="text-xs text-slate-400 flex items-start gap-2">
+                        <span className="text-cyan-400">&#8226;</span>{r}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+          <SecurityReport result={result} title="Reporte del mensaje analizado" />
+        </>
       )}
     </div>
   );

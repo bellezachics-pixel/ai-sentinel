@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import type { AnalysisResult } from "@/lib/api";
 import { cn, getRiskColor, getRiskBg, formatDate } from "@/lib/utils";
 import RiskGauge from "@/components/dashboard/RiskGauge";
+import SecurityReport from "@/components/analysis/SecurityReport";
 
 export default function URLScanner() {
   const [url, setUrl] = useState("");
@@ -118,74 +119,77 @@ export default function URLScanner() {
 
       {/* Results */}
       {result && !loading && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Risk Score */}
-          <div className="rounded-xl bg-[#111827] border border-[#1e293b] p-5 flex items-center justify-center">
-            <RiskGauge score={result.risk_score.total} size={160} />
-          </div>
+        <>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* Risk Score */}
+            <div className="rounded-xl bg-[#111827] border border-[#1e293b] p-5 flex items-center justify-center">
+              <RiskGauge score={result.risk_score.total} size={160} />
+            </div>
 
-          {/* Findings */}
-          <div className="rounded-xl bg-[#111827] border border-[#1e293b] p-5 lg:col-span-2">
-            <h3 className="text-sm font-semibold text-slate-300 mb-3">
-              Hallazgos
-            </h3>
-            {result.findings.length === 0 ? (
-              <div className="flex items-center gap-2 text-emerald-400 py-4">
-                <CheckCircle className="w-5 h-5" />
-                <span className="text-sm">
-                  No se encontraron amenazas significativas
-                </span>
-              </div>
-            ) : (
-              <div className="space-y-2 max-h-[250px] overflow-y-auto">
-                {result.findings.map((finding, i) => (
-                  <div
-                    key={i}
-                    className={cn(
-                      "flex items-start gap-3 p-3 rounded-lg border",
-                      getRiskBg(finding.severity)
-                    )}
-                  >
-                    <AlertTriangle
-                      className={cn(
-                        "w-4 h-4 shrink-0 mt-0.5",
-                        getRiskColor(finding.severity)
-                      )}
-                    />
-                    <div>
-                      <p className="text-xs font-medium text-slate-300">
-                        {finding.type}
-                      </p>
-                      <p className="text-xs text-slate-400 mt-0.5">
-                        {finding.description}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Recommendations */}
-            {result.recommendations.length > 0 && (
-              <div className="mt-4 pt-4 border-t border-[#1e293b]">
-                <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                  Recomendaciones
-                </h4>
-                <ul className="space-y-1.5">
-                  {result.recommendations.map((rec, i) => (
-                    <li
+            {/* Findings */}
+            <div className="rounded-xl bg-[#111827] border border-[#1e293b] p-5 lg:col-span-2">
+              <h3 className="text-sm font-semibold text-slate-300 mb-3">
+                Hallazgos
+              </h3>
+              {result.findings.length === 0 ? (
+                <div className="flex items-center gap-2 text-emerald-400 py-4">
+                  <CheckCircle className="w-5 h-5" />
+                  <span className="text-sm">
+                    No se encontraron amenazas significativas
+                  </span>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-[250px] overflow-y-auto">
+                  {result.findings.map((finding, i) => (
+                    <div
                       key={i}
-                      className="text-xs text-slate-400 flex items-start gap-2"
+                      className={cn(
+                        "flex items-start gap-3 p-3 rounded-lg border",
+                        getRiskBg(finding.severity)
+                      )}
                     >
-                      <span className="text-cyan-400 mt-0.5">•</span>
-                      {rec}
-                    </li>
+                      <AlertTriangle
+                        className={cn(
+                          "w-4 h-4 shrink-0 mt-0.5",
+                          getRiskColor(finding.severity)
+                        )}
+                      />
+                      <div>
+                        <p className="text-xs font-medium text-slate-300">
+                          {finding.type}
+                        </p>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          {finding.description}
+                        </p>
+                      </div>
+                    </div>
                   ))}
-                </ul>
-              </div>
-            )}
+                </div>
+              )}
+
+              {/* Recommendations */}
+              {result.recommendations.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-[#1e293b]">
+                  <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                    Recomendaciones
+                  </h4>
+                  <ul className="space-y-1.5">
+                    {result.recommendations.map((rec, i) => (
+                      <li
+                        key={i}
+                        className="text-xs text-slate-400 flex items-start gap-2"
+                      >
+                        <span className="text-cyan-400 mt-0.5">•</span>
+                        {rec}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+          <SecurityReport result={result} title="Reporte del escaneo de URL" />
+        </>
       )}
 
       {/* History */}

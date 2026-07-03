@@ -9,6 +9,7 @@ import { api } from "@/lib/api";
 import type { AnalysisResult } from "@/lib/api";
 import { cn, getRiskColor, getRiskBg } from "@/lib/utils";
 import RiskGauge from "@/components/dashboard/RiskGauge";
+import SecurityReport from "@/components/analysis/SecurityReport";
 
 const FILE_TYPES = [
   { ext: "pdf", label: "PDF", icon: FileText, accept: ".pdf" },
@@ -143,50 +144,53 @@ export default function FileAnalyzer() {
       )}
 
       {result && !loading && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="rounded-xl bg-[#111827] border border-[#1e293b] p-5 flex items-center justify-center">
-            <RiskGauge score={result.risk_score.total} size={160} />
-          </div>
-          <div className="rounded-xl bg-[#111827] border border-[#1e293b] p-5 lg:col-span-2">
-            <h3 className="text-sm font-semibold text-slate-300 mb-3">Resultados</h3>
-            {fileMeta && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-4">
-                <div className="rounded-lg bg-[#0a0e1a]/50 p-3">
-                  <p className="text-[10px] uppercase text-slate-500 mb-1">SHA-256</p>
-                  <p className="text-xs text-slate-300 font-mono break-all">{fileMeta.sha256 || "N/A"}</p>
-                </div>
-                <div className="rounded-lg bg-[#0a0e1a]/50 p-3">
-                  <p className="text-[10px] uppercase text-slate-500 mb-1">Reputacion</p>
-                  <p className="text-xs text-slate-300">
-                    VirusTotal {fileMeta.virustotal_available ? "consultado" : "no configurado"}
-                  </p>
-                  <p className="text-xs text-slate-500 mt-1">
-                    {typeof fileMeta.size_bytes === "number" ? formatFileSize(fileMeta.size_bytes) : "N/A"}
-                    {fileMeta.extension ? ` · .${fileMeta.extension}` : ""}
-                  </p>
-                </div>
-              </div>
-            )}
-            {result.findings.length === 0 ? (
-              <div className="flex items-center gap-2 text-emerald-400 py-4">
-                <CheckCircle className="w-5 h-5" />
-                <span className="text-sm">El archivo parece seguro</span>
-              </div>
-            ) : (
-              <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                {result.findings.map((f, i) => (
-                  <div key={i} className={cn("flex items-start gap-3 p-3 rounded-lg border", getRiskBg(f.severity))}>
-                    <AlertTriangle className={cn("w-4 h-4 shrink-0 mt-0.5", getRiskColor(f.severity))} />
-                    <div>
-                      <p className="text-xs font-medium text-slate-300">{f.type}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">{f.description}</p>
-                    </div>
+        <>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="rounded-xl bg-[#111827] border border-[#1e293b] p-5 flex items-center justify-center">
+              <RiskGauge score={result.risk_score.total} size={160} />
+            </div>
+            <div className="rounded-xl bg-[#111827] border border-[#1e293b] p-5 lg:col-span-2">
+              <h3 className="text-sm font-semibold text-slate-300 mb-3">Resultados</h3>
+              {fileMeta && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-4">
+                  <div className="rounded-lg bg-[#0a0e1a]/50 p-3">
+                    <p className="text-[10px] uppercase text-slate-500 mb-1">SHA-256</p>
+                    <p className="text-xs text-slate-300 font-mono break-all">{fileMeta.sha256 || "N/A"}</p>
                   </div>
-                ))}
-              </div>
-            )}
+                  <div className="rounded-lg bg-[#0a0e1a]/50 p-3">
+                    <p className="text-[10px] uppercase text-slate-500 mb-1">Reputacion</p>
+                    <p className="text-xs text-slate-300">
+                      VirusTotal {fileMeta.virustotal_available ? "consultado" : "no configurado"}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      {typeof fileMeta.size_bytes === "number" ? formatFileSize(fileMeta.size_bytes) : "N/A"}
+                      {fileMeta.extension ? ` · .${fileMeta.extension}` : ""}
+                    </p>
+                  </div>
+                </div>
+              )}
+              {result.findings.length === 0 ? (
+                <div className="flex items-center gap-2 text-emerald-400 py-4">
+                  <CheckCircle className="w-5 h-5" />
+                  <span className="text-sm">El archivo parece seguro</span>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                  {result.findings.map((f, i) => (
+                    <div key={i} className={cn("flex items-start gap-3 p-3 rounded-lg border", getRiskBg(f.severity))}>
+                      <AlertTriangle className={cn("w-4 h-4 shrink-0 mt-0.5", getRiskColor(f.severity))} />
+                      <div>
+                        <p className="text-xs font-medium text-slate-300">{f.type}</p>
+                        <p className="text-xs text-slate-400 mt-0.5">{f.description}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+          <SecurityReport result={result} title="Reporte del archivo analizado" />
+        </>
       )}
     </div>
   );
