@@ -33,6 +33,11 @@ def get_integrations_status() -> dict[str, dict[str, bool | str]]:
             "configured": _configured(settings.GOOGLE_FACT_CHECK_API_KEY),
             "provider": "Google Fact Check Tools API",
         },
+        "google_login": {
+            "configured": _configured(settings.GOOGLE_OAUTH_CLIENT_ID)
+            and _configured(settings.GOOGLE_OAUTH_CLIENT_SECRET),
+            "provider": "Google OAuth",
+        },
         "numverify": {
             "configured": _configured(settings.NUMVERIFY_API_KEY),
             "provider": "Numverify",

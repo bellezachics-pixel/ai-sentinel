@@ -189,6 +189,8 @@ export const api = {
 
   getMe: () => apiFetch<UserProfile>("/api/v1/auth/me"),
 
+  getGoogleLoginUrl: () => `${API_BASE}/api/v1/auth/google/login`,
+
   me: () =>
     apiFetch<{ username: string; email: string; is_admin: boolean }>(
       "/api/v1/auth/me"

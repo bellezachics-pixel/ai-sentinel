@@ -69,6 +69,10 @@ OPENAI_API_KEY=tu_api_key
 OPENAI_CHAT_MODEL=gpt-4o-mini
 OPENAI_VISION_MODEL=gpt-4o-mini
 GOOGLE_FACT_CHECK_API_KEY=tu_api_key
+GOOGLE_OAUTH_CLIENT_ID=tu_google_client_id
+GOOGLE_OAUTH_CLIENT_SECRET=tu_google_client_secret
+GOOGLE_OAUTH_REDIRECT_URI=http://localhost:8000/api/v1/auth/google/callback
+FRONTEND_URL=http://localhost:3000
 NUMVERIFY_API_KEY=tu_api_key
 TWILIO_ACCOUNT_SID=tu_account_sid
 TWILIO_AUTH_TOKEN=tu_auth_token
@@ -77,6 +81,19 @@ REQUIRE_AUTH_FOR_ANALYSIS=false
 ```
 
 La app funciona sin API keys con capacidades reducidas (analisis local solamente).
+
+### Login con Google/Gmail
+
+Crear credenciales OAuth 2.0 en Google Cloud y configurar estas variables en Render:
+
+```env
+GOOGLE_OAUTH_CLIENT_ID=...
+GOOGLE_OAUTH_CLIENT_SECRET=...
+GOOGLE_OAUTH_REDIRECT_URI=https://TU-BACKEND-RENDER.onrender.com/api/v1/auth/google/callback
+FRONTEND_URL=https://frontend-kappa-wheat-28.vercel.app
+```
+
+En Google Cloud, agregar el mismo valor de `GOOGLE_OAUTH_REDIRECT_URI` en **Authorized redirect URIs**.
 
 Para proteger endpoints de analisis, chat y dashboard con JWT, configurar:
 

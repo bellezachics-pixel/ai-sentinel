@@ -19,6 +19,14 @@ services:
         sync: false
       - key: GOOGLE_FACT_CHECK_API_KEY
         sync: false
+      - key: GOOGLE_OAUTH_CLIENT_ID
+        sync: false
+      - key: GOOGLE_OAUTH_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_OAUTH_REDIRECT_URI
+        sync: false
+      - key: FRONTEND_URL
+        value: https://frontend-kappa-wheat-28.vercel.app
       - key: NUMVERIFY_API_KEY
         sync: false
       - key: TWILIO_ACCOUNT_SID

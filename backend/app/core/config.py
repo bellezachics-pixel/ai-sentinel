@@ -31,6 +31,12 @@ class Settings(BaseSettings):
     # Fact checking
     GOOGLE_FACT_CHECK_API_KEY: Optional[str] = None
 
+    # Google OAuth login
+    GOOGLE_OAUTH_CLIENT_ID: Optional[str] = None
+    GOOGLE_OAUTH_CLIENT_SECRET: Optional[str] = None
+    GOOGLE_OAUTH_REDIRECT_URI: Optional[str] = None
+    FRONTEND_URL: str = "http://localhost:3000"
+
     # Phone intelligence
     NUMVERIFY_API_KEY: Optional[str] = None
     TWILIO_ACCOUNT_SID: Optional[str] = None

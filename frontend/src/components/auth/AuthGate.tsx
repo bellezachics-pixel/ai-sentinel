@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Lock, Loader2, LogIn, Shield, UserPlus } from "lucide-react";
+import { Lock, Loader2, LogIn, Mail, Shield, UserPlus } from "lucide-react";
 import {
   api,
   clearAuthTokens,
@@ -29,6 +29,25 @@ export default function AuthGate({ children }: AuthGateProps) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const hashAccessToken = hashParams.get("access_token");
+    const hashRefreshToken = hashParams.get("refresh_token");
+    const hashError = hashParams.get("auth_error");
+
+    if (hashAccessToken) {
+      setAuthTokens(hashAccessToken, hashRefreshToken || undefined);
+      window.history.replaceState(null, "", window.location.pathname);
+    } else if (hashError) {
+      window.history.replaceState(null, "", window.location.pathname);
+      queueMicrotask(() => {
+        setError(
+          hashError === "google_not_configured"
+            ? "Google login todavia no esta configurado."
+            : "No se pudo completar el acceso con Google."
+        );
+      });
+    }
+
     const token = getAccessToken();
     if (!token) {
       return;
@@ -79,6 +98,11 @@ export default function AuthGate({ children }: AuthGateProps) {
     setPassword("");
   };
 
+  const handleGoogleLogin = () => {
+    setError(null);
+    window.location.href = api.getGoogleLoginUrl();
+  };
+
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-[#0a0e1a]">
@@ -102,6 +126,22 @@ export default function AuthGate({ children }: AuthGateProps) {
             <h1 className="text-lg font-bold text-white">AI-Sentinel</h1>
             <p className="text-xs text-slate-500">Acceso seguro al panel</p>
           </div>
+        </div>
+
+        <button
+          onClick={handleGoogleLogin}
+          className="mb-4 flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-[#1e293b] bg-white text-sm font-medium text-slate-900 transition-colors hover:bg-slate-100"
+        >
+          <Mail className="h-4 w-4 text-red-500" />
+          Continuar con Google
+        </button>
+
+        <div className="mb-4 flex items-center gap-3">
+          <div className="h-px flex-1 bg-[#1e293b]" />
+          <span className="text-[11px] uppercase text-slate-600">
+            o usa contrasena
+          </span>
+          <div className="h-px flex-1 bg-[#1e293b]" />
         </div>
 
         <div className="grid grid-cols-2 gap-2 mb-5">
