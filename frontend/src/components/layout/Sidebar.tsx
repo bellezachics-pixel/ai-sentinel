@@ -98,9 +98,17 @@ interface SidebarProps {
   activeView: ViewType;
   onViewChange: (view: ViewType) => void;
   onLoginClick?: () => void;
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
-export default function Sidebar({ activeView, onViewChange, onLoginClick }: SidebarProps) {
+export default function Sidebar({
+  activeView,
+  onViewChange,
+  onLoginClick,
+  mobileOpen = false,
+  onMobileClose,
+}: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const [isLoggedIn, setIsLoggedIn] = useState(() => !!getToken());
@@ -116,12 +124,22 @@ export default function Sidebar({ activeView, onViewChange, onLoginClick }: Side
   };
 
   return (
-    <aside
-      className={cn(
-        "flex flex-col h-screen bg-[#0d1117] border-r border-[#1e293b] transition-all duration-300 relative z-20",
-        collapsed ? "w-[68px]" : "w-[250px]"
+    <>
+      {mobileOpen && (
+        <button
+          aria-label="Cerrar menu"
+          onClick={onMobileClose}
+          className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm md:hidden"
+        />
       )}
-    >
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-40 flex h-screen flex-col bg-[#0d1117] border-r border-[#1e293b] transition-all duration-300 md:relative md:z-20 md:translate-x-0",
+          collapsed ? "md:w-[68px]" : "md:w-[250px]",
+          "w-[250px]",
+          mobileOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
       {/* Logo */}
       <div className="flex items-center gap-3 px-4 h-16 border-b border-[#1e293b] shrink-0">
         <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-cyan-500/10 border border-cyan-500/30 shrink-0">
@@ -162,7 +180,10 @@ export default function Sidebar({ activeView, onViewChange, onLoginClick }: Side
                   return (
                     <button
                       key={item.id}
-                      onClick={() => onViewChange(item.id)}
+                      onClick={() => {
+                        onViewChange(item.id);
+                        onMobileClose?.();
+                      }}
                       className={cn(
                         "flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-[13px] transition-all duration-200 group",
                         isActive
@@ -222,10 +243,11 @@ export default function Sidebar({ activeView, onViewChange, onLoginClick }: Side
       {/* Collapse toggle */}
       <button
         onClick={() => setCollapsed(!collapsed)}
-        className="absolute -right-3 top-20 w-6 h-6 rounded-full bg-[#1e293b] border border-[#334155] flex items-center justify-center text-slate-400 hover:text-white hover:bg-[#334155] transition-colors z-30"
+        className="absolute -right-3 top-20 hidden w-6 h-6 rounded-full bg-[#1e293b] border border-[#334155] md:flex items-center justify-center text-slate-400 hover:text-white hover:bg-[#334155] transition-colors z-30"
       >
         {collapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronLeft className="w-3 h-3" />}
       </button>
-    </aside>
+      </aside>
+    </>
   );
 }

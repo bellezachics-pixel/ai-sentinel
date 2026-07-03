@@ -38,6 +38,7 @@ const VIEW_TITLES: Record<ViewType, string> = {
 
 export default function Home() {
   const [activeView, setActiveView] = useState<ViewType>("dashboard");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const renderContent = () => {
     switch (activeView) {
@@ -78,14 +79,20 @@ export default function Home() {
     <AuthGate>
       {({ user, onLogout }) => (
         <div className="flex h-screen overflow-hidden bg-[#0a0e1a]">
-          <Sidebar activeView={activeView} onViewChange={setActiveView} />
+          <Sidebar
+            activeView={activeView}
+            onViewChange={setActiveView}
+            mobileOpen={mobileMenuOpen}
+            onMobileClose={() => setMobileMenuOpen(false)}
+          />
           <div className="flex flex-col flex-1 min-w-0">
             <Header
               title={VIEW_TITLES[activeView]}
               username={user.username}
               onLogout={onLogout}
+              onMenuClick={() => setMobileMenuOpen(true)}
             />
-            <main className="flex-1 overflow-y-auto p-6">{renderContent()}</main>
+            <main className="flex-1 overflow-y-auto p-4 md:p-6">{renderContent()}</main>
           </div>
         </div>
       )}

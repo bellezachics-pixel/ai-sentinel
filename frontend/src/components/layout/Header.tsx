@@ -1,16 +1,17 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { LogOut, Search, Bell, Wifi, WifiOff, Clock, User } from "lucide-react";
+import { LogOut, Search, Bell, Wifi, WifiOff, Clock, User, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface HeaderProps {
   title?: string;
   username?: string;
   onLogout?: () => void;
+  onMenuClick?: () => void;
 }
 
-export default function Header({ title, username, onLogout }: HeaderProps) {
+export default function Header({ title, username, onLogout, onMenuClick }: HeaderProps) {
   const [time, setTime] = useState("");
   const isSecure = true;
   const [searchQuery, setSearchQuery] = useState("");
@@ -32,16 +33,23 @@ export default function Header({ title, username, onLogout }: HeaderProps) {
   }, []);
 
   return (
-    <header className="h-14 bg-[#0d1117]/80 backdrop-blur-sm border-b border-[#1e293b] flex items-center justify-between px-6 shrink-0">
+    <header className="h-14 bg-[#0d1117]/80 backdrop-blur-sm border-b border-[#1e293b] flex items-center justify-between gap-3 px-4 md:px-6 shrink-0">
       {/* Left: Title */}
-      <div className="flex items-center gap-4">
+      <div className="flex min-w-0 items-center gap-3 md:gap-4">
+        <button
+          onClick={onMenuClick}
+          className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#1e293b] bg-[#111827] text-slate-400 transition-colors hover:text-cyan-400 md:hidden"
+          aria-label="Abrir menu"
+        >
+          <Menu className="h-4 w-4" />
+        </button>
         {title && (
-          <h2 className="text-base font-semibold text-white">{title}</h2>
+          <h2 className="truncate text-sm font-semibold text-white md:text-base">{title}</h2>
         )}
       </div>
 
       {/* Center: Search */}
-      <div className="flex-1 max-w-md mx-8">
+      <div className="hidden flex-1 max-w-md mx-4 md:block lg:mx-8">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
           <input
@@ -55,7 +63,7 @@ export default function Header({ title, username, onLogout }: HeaderProps) {
       </div>
 
       {/* Right: Status indicators */}
-      <div className="flex items-center gap-5">
+      <div className="flex items-center gap-2 md:gap-5">
         {username && (
           <div className="hidden md:flex items-center gap-2 rounded-lg border border-[#1e293b] bg-[#111827] px-3 py-1.5">
             <User className="w-3.5 h-3.5 text-cyan-400" />
@@ -64,7 +72,7 @@ export default function Header({ title, username, onLogout }: HeaderProps) {
         )}
 
         {/* Network status */}
-        <div className="flex items-center gap-2">
+        <div className="hidden items-center gap-2 sm:flex">
           {isSecure ? (
             <Wifi className="w-4 h-4 text-emerald-400" />
           ) : (
@@ -89,7 +97,7 @@ export default function Header({ title, username, onLogout }: HeaderProps) {
         </div>
 
         {/* Notifications */}
-        <button className="relative p-1.5 rounded-lg hover:bg-white/5 transition-colors">
+        <button className="relative hidden p-1.5 rounded-lg hover:bg-white/5 transition-colors sm:block">
           <Bell className="w-4 h-4 text-slate-400" />
           {notifications > 0 && (
             <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-red-500 text-[10px] font-bold text-white flex items-center justify-center">
@@ -99,7 +107,7 @@ export default function Header({ title, username, onLogout }: HeaderProps) {
         </button>
 
         {/* Time */}
-        <div className="flex items-center gap-1.5 text-slate-500">
+        <div className="hidden items-center gap-1.5 text-slate-500 md:flex">
           <Clock className="w-3.5 h-3.5" />
           <span className="text-xs text-mono tabular-nums">{time}</span>
         </div>
