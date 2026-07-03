@@ -57,6 +57,13 @@ docker compose up --build
 - **Backend API:** http://localhost:8000
 - **API Docs (Swagger):** http://localhost:8000/docs
 
+## PWA instalable
+
+El frontend incluye manifest, iconos y service worker para instalarlo como app desde el navegador.
+
+- En iPhone/iPad: Safari -> Compartir -> Agregar a pantalla de inicio.
+- En Android/Chrome: menu del navegador -> Instalar app o Agregar a pantalla principal.
+
 ## API Keys (Opcionales)
 
 Crear archivo `.env` en la raiz del backend:
