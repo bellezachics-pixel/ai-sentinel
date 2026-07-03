@@ -37,6 +37,10 @@ def get_integrations_status() -> dict[str, dict[str, bool | str]]:
             "configured": _configured(settings.GOOGLE_OAUTH_CLIENT_ID)
             and _configured(settings.GOOGLE_OAUTH_CLIENT_SECRET),
             "provider": "Google OAuth",
+            "client_id_configured": _configured(settings.GOOGLE_OAUTH_CLIENT_ID),
+            "client_secret_configured": _configured(settings.GOOGLE_OAUTH_CLIENT_SECRET),
+            "redirect_uri_configured": _configured(settings.GOOGLE_OAUTH_REDIRECT_URI),
+            "frontend_url_configured": _configured(settings.FRONTEND_URL),
         },
         "numverify": {
             "configured": _configured(settings.NUMVERIFY_API_KEY),
