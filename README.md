@@ -95,6 +95,21 @@ FRONTEND_URL=https://frontend-kappa-wheat-28.vercel.app
 
 En Google Cloud, agregar el mismo valor de `GOOGLE_OAUTH_REDIRECT_URI` en **Authorized redirect URIs**.
 
+## Deploy Backend en Render
+
+Si Render no despliega automaticamente despues de un push, crear un **Deploy Hook** en Render y guardarlo en GitHub:
+
+1. Render -> `ai-sentinel-backend` -> Settings -> Deploy Hook -> Create Deploy Hook.
+2. GitHub -> repo `ai-sentinel` -> Settings -> Secrets and variables -> Actions -> New repository secret.
+3. Nombre del secret:
+
+```text
+RENDER_DEPLOY_HOOK_URL
+```
+
+4. Valor: la URL del Deploy Hook de Render.
+5. Ejecutar el workflow **Deploy Backend to Render** desde GitHub Actions o hacer push a `main`.
+
 Para proteger endpoints de analisis, chat y dashboard con JWT, configurar:
 
 ```env
