@@ -12,7 +12,7 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: REQUIRE_AUTH_FOR_ANALYSIS
-        value: false
+        value: true
       - key: OPENAI_API_KEY
         sync: false
       - key: VIRUSTOTAL_API_KEY

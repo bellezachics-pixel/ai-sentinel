@@ -9,6 +9,7 @@
 - Paginas legales basicas: privacidad, terminos y uso responsable.
 - Deploy hook de Render conectado a GitHub Actions.
 - Endpoints de analisis, chat y dashboard protegidos con login.
+- Reporte descargable/copiar por analisis en URL, mensajes y archivos.
 
 ## Antes de vender a clientes
 
@@ -21,6 +22,7 @@
   - Analizar URL.
   - Analizar mensaje.
   - Subir archivo.
+  - Copiar o descargar reporte.
   - Revisar dashboard.
 - Revisar la app instalada como PWA en iPhone y Android.
 - Elegir dominio propio y conectarlo a Vercel.
@@ -30,5 +32,4 @@
 
 - Base de datos real para usuarios y reportes.
 - Planes Gratis/Pro conectados al sistema de ventas.
-- Reporte descargable por analisis.
 - Branding final: nombre, logo, capturas y textos comerciales.
