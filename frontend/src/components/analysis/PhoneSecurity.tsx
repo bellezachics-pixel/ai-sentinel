@@ -1,88 +1,100 @@
 "use client";
 
-import { useState } from "react";
 import {
-  Smartphone, Shield, Eye, AppWindow, Lock, Globe,
-  AlertTriangle, CheckCircle, Loader2, RefreshCw,
+  AlertTriangle,
+  AppWindow,
+  CheckCircle,
+  Eye,
+  Globe,
+  Lock,
+  Shield,
+  Smartphone,
+  Wifi,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-interface SecurityCheck {
+interface GuidanceItem {
   id: string;
   label: string;
   icon: React.ElementType;
-  description: string;
-  status: "safe" | "warning" | "danger" | "pending" | "checking";
-  detail?: string;
+  status: "available" | "manual" | "limited";
+  detail: string;
+  action: string;
 }
 
+const guidance: GuidanceItem[] = [
+  {
+    id: "links",
+    label: "Enlaces y mensajes",
+    icon: Globe,
+    status: "available",
+    detail: "Centinela si puede analizar URLs, QR, correos y mensajes sospechosos.",
+    action: "Usa URL, Mensajes, Correos o QR para revisar evidencia real.",
+  },
+  {
+    id: "files",
+    label: "Archivos recibidos",
+    icon: Shield,
+    status: "available",
+    detail: "Puedes subir PDFs, ZIPs, APKs e imagenes para revisar metadata, hash y reputacion.",
+    action: "Sube el archivo en Analizador de Archivos antes de abrirlo.",
+  },
+  {
+    id: "spyware",
+    label: "Spyware instalado",
+    icon: Eye,
+    status: "limited",
+    detail: "Una web/PWA no puede leer procesos internos ni apps instaladas del telefono.",
+    action: "Revisa consumo de bateria, apps desconocidas y perfiles/VPN instalados desde ajustes del sistema.",
+  },
+  {
+    id: "apps",
+    label: "Apps peligrosas",
+    icon: AppWindow,
+    status: "manual",
+    detail: "Centinela no tiene permiso para listar tus apps desde el navegador.",
+    action: "Elimina apps que no reconozcas y revisa permisos de ubicacion, camara, microfono y accesibilidad.",
+  },
+  {
+    id: "permissions",
+    label: "Permisos excesivos",
+    icon: Lock,
+    status: "manual",
+    detail: "Los permisos del telefono se revisan desde Android/iOS, no desde la web.",
+    action: "Deja permisos sensibles en 'Preguntar siempre' o 'Solo mientras se usa la app'.",
+  },
+  {
+    id: "network",
+    label: "Red y modem",
+    icon: Wifi,
+    status: "available",
+    detail: "Centinela puede revisar señales de red contra un objetivo, pero no controla el modem.",
+    action: "Usa Monitor de Red y cambia la clave del WiFi si sospechas acceso no autorizado.",
+  },
+];
+
+const statusStyles = {
+  available: {
+    label: "Disponible",
+    icon: CheckCircle,
+    className: "bg-emerald-500/10 border-emerald-500/20 text-emerald-400",
+  },
+  manual: {
+    label: "Revision manual",
+    icon: AlertTriangle,
+    className: "bg-amber-500/10 border-amber-500/20 text-amber-400",
+  },
+  limited: {
+    label: "Limitado en web",
+    icon: AlertTriangle,
+    className: "bg-slate-500/10 border-slate-500/20 text-slate-400",
+  },
+};
+
 export default function PhoneSecurity() {
-  const [checks, setChecks] = useState<SecurityCheck[]>([
-    { id: "device", label: "Estado del dispositivo", icon: Smartphone, description: "Verifica integridad del sistema", status: "pending" },
-    { id: "spyware", label: "Deteccion de spyware", icon: Eye, description: "Busca senales de software espia", status: "pending" },
-    { id: "apps", label: "Apps peligrosas", icon: AppWindow, description: "Revisa apps con permisos excesivos", status: "pending" },
-    { id: "permissions", label: "Permisos excesivos", icon: Lock, description: "Detecta permisos innecesarios", status: "pending" },
-    { id: "dns", label: "Configuracion DNS", icon: Globe, description: "Verifica DNS seguro", status: "pending" },
-    { id: "vpn", label: "VPN activa", icon: Shield, description: "Verifica conexion VPN", status: "pending" },
-    { id: "config", label: "Config. inseguras", icon: AlertTriangle, description: "Detecta configuraciones riesgosas", status: "pending" },
-  ]);
-  const [scanning, setScanning] = useState(false);
-  const [completed, setCompleted] = useState(false);
-
-  const runScan = async () => {
-    setScanning(true);
-    setCompleted(false);
-    const details = [
-      "Sistema operativo actualizado, sin jailbreak detectado",
-      "No se detectaron procesos sospechosos ni software espia",
-      "3 apps con acceso a ubicacion en segundo plano",
-      "2 apps con permisos de camara y microfono innecesarios",
-      "DNS configurado correctamente (HTTPS/TLS)",
-      "No se detecto VPN activa - se recomienda usar una",
-      "Bluetooth activo y visible - se recomienda desactivar cuando no se use",
-    ];
-    const statuses: Array<"safe" | "warning" | "danger"> = [
-      "safe", "safe", "warning", "warning", "safe", "warning", "warning"
-    ];
-
-    for (let i = 0; i < checks.length; i++) {
-      setChecks((prev) =>
-        prev.map((c, idx) => (idx === i ? { ...c, status: "checking" } : c))
-      );
-      await new Promise((r) => setTimeout(r, 800 + Math.random() * 600));
-      setChecks((prev) =>
-        prev.map((c, idx) =>
-          idx === i ? { ...c, status: statuses[i], detail: details[i] } : c
-        )
-      );
-    }
-    setScanning(false);
-    setCompleted(true);
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "safe": return "text-emerald-400";
-      case "warning": return "text-amber-400";
-      case "danger": return "text-red-400";
-      case "checking": return "text-cyan-400";
-      default: return "text-slate-500";
-    }
-  };
-
-  const getStatusBg = (status: string) => {
-    switch (status) {
-      case "safe": return "bg-emerald-500/10 border-emerald-500/20";
-      case "warning": return "bg-amber-500/10 border-amber-500/20";
-      case "danger": return "bg-red-500/10 border-red-500/20";
-      case "checking": return "bg-cyan-500/10 border-cyan-500/20";
-      default: return "bg-[#111827] border-[#1e293b]";
-    }
-  };
-
-  const safeCount = checks.filter((c) => c.status === "safe").length;
-  const warnCount = checks.filter((c) => c.status === "warning").length;
-  const dangerCount = checks.filter((c) => c.status === "danger").length;
+  const availableCount = guidance.filter((item) => item.status === "available").length;
+  const manualCount = guidance.filter((item) => item.status === "manual").length;
+  const limitedCount = guidance.filter((item) => item.status === "limited").length;
 
   return (
     <div className="space-y-6 animate-fade-in-up">
@@ -90,54 +102,82 @@ export default function PhoneSecurity() {
         <h2 className="text-xl font-bold text-white flex items-center gap-2">
           <Smartphone className="w-6 h-6 text-cyan-400" /> Seguridad del Telefono
         </h2>
-        <p className="text-sm text-slate-500 mt-0.5">Revisa la seguridad de tu dispositivo movil</p>
+        <p className="text-sm text-slate-500 mt-0.5">
+          Guia honesta para revisar tu telefono desde Centinela web
+        </p>
       </div>
 
-      {/* Scan button */}
-      <div className="rounded-xl bg-[#111827] border border-[#1e293b] p-6 text-center">
-        <button
-          onClick={runScan}
-          disabled={scanning}
-          className="inline-flex items-center justify-center gap-2 px-8 h-12 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-base font-semibold transition-all disabled:opacity-50 shadow-lg shadow-cyan-500/20"
-        >
-          {scanning ? <Loader2 className="w-5 h-5 animate-spin" /> : <RefreshCw className="w-5 h-5" />}
-          {scanning ? "Escaneando..." : "Iniciar Escaneo"}
-        </button>
-        {completed && (
-          <div className="flex items-center justify-center gap-4 mt-4">
-            <span className="text-sm text-emerald-400">{safeCount} seguros</span>
-            <span className="text-sm text-amber-400">{warnCount} alertas</span>
-            <span className="text-sm text-red-400">{dangerCount} peligros</span>
+      <div className="rounded-xl bg-cyan-500/5 border border-cyan-500/20 p-5">
+        <div className="flex items-start gap-3">
+          <Shield className="w-5 h-5 text-cyan-400 shrink-0 mt-0.5" />
+          <div>
+            <h3 className="text-sm font-semibold text-cyan-300">
+              Importante
+            </h3>
+            <p className="text-xs text-slate-400 mt-1 leading-5">
+              En navegador o PWA, Centinela no puede leer procesos, spyware,
+              apps instaladas ni permisos internos del telefono. Para un
+              diagnostico profundo se necesita una app movil nativa o una
+              herramienta MDM/antivirus. Aqui te mostramos que se puede revisar
+              desde la web y que debes validar manualmente.
+            </p>
           </div>
-        )}
+        </div>
       </div>
 
-      {/* Check items */}
-      <div className="space-y-2">
-        {checks.map((check) => (
-          <div
-            key={check.id}
-            className={cn("rounded-lg border p-4 transition-all duration-300", getStatusBg(check.status))}
-          >
-            <div className="flex items-center gap-3">
-              <check.icon className={cn("w-5 h-5 shrink-0", getStatusColor(check.status))} />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-slate-200">{check.label}</p>
-                <p className="text-xs text-slate-500">{check.description}</p>
-              </div>
-              <div className="shrink-0">
-                {check.status === "checking" && <Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />}
-                {check.status === "safe" && <CheckCircle className="w-4 h-4 text-emerald-400" />}
-                {check.status === "warning" && <AlertTriangle className="w-4 h-4 text-amber-400" />}
-                {check.status === "danger" && <AlertTriangle className="w-4 h-4 text-red-400" />}
-                {check.status === "pending" && <div className="w-4 h-4 rounded-full border border-slate-600" />}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="rounded-lg bg-[#111827] border border-emerald-500/20 p-3 text-center">
+          <p className="text-lg font-bold text-emerald-400">{availableCount}</p>
+          <p className="text-[11px] text-slate-500">Reales desde web</p>
+        </div>
+        <div className="rounded-lg bg-[#111827] border border-amber-500/20 p-3 text-center">
+          <p className="text-lg font-bold text-amber-400">{manualCount}</p>
+          <p className="text-[11px] text-slate-500">Manual</p>
+        </div>
+        <div className="rounded-lg bg-[#111827] border border-slate-500/20 p-3 text-center">
+          <p className="text-lg font-bold text-slate-400">{limitedCount}</p>
+          <p className="text-[11px] text-slate-500">Limitado</p>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {guidance.map((item) => {
+          const style = statusStyles[item.status];
+          const StatusIcon = style.icon;
+
+          return (
+            <div
+              key={item.id}
+              className="rounded-lg border border-[#1e293b] bg-[#111827] p-4"
+            >
+              <div className="flex items-start gap-3">
+                <item.icon className="w-5 h-5 text-cyan-400 shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm font-medium text-slate-200">
+                      {item.label}
+                    </p>
+                    <span
+                      className={cn(
+                        "inline-flex w-fit items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium",
+                        style.className
+                      )}
+                    >
+                      <StatusIcon className="w-3 h-3" />
+                      {style.label}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-2 leading-5">
+                    {item.detail}
+                  </p>
+                  <p className="text-xs text-slate-300 mt-2 leading-5">
+                    {item.action}
+                  </p>
+                </div>
               </div>
             </div>
-            {check.detail && (
-              <p className={cn("text-xs mt-2 pl-8", getStatusColor(check.status))}>{check.detail}</p>
-            )}
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

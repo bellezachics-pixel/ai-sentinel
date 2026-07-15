@@ -10,6 +10,7 @@ import { api } from "@/lib/api";
 import type { AnalysisResult } from "@/lib/api";
 import { cn, getRiskColor, getRiskBg } from "@/lib/utils";
 import RiskGauge from "@/components/dashboard/RiskGauge";
+import SecurityReport from "@/components/analysis/SecurityReport";
 
 const PREMIUM_FEATURES = [
   { id: "payments", label: "Pagos seguros", icon: CreditCard, desc: "Verificar si un sitio acepta pagos seguros", placeholder: "https://tienda.com" },
@@ -29,7 +30,6 @@ export default function PremiumFeatures() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [connectionChecks, setConnectionChecks] = useState<Array<{ name: string; status: string; detail: string }>>([]);
 
   const feature = PREMIUM_FEATURES[selected];
 
@@ -60,32 +60,16 @@ export default function PremiumFeatures() {
 
   const runConnectionAudit = async () => {
     setLoading(true);
-    setConnectionChecks([]);
     setResult(null);
     setError(null);
-
-    const checks = [
-      { name: "Man-in-the-Middle (MITM)", detail: "No se detectaron proxies intermedios sospechosos" },
-      { name: "Adversary-in-the-Middle (AiTM)", detail: "Certificados SSL validos, sin interceptacion detectada" },
-      { name: "DNS Spoofing", detail: "Resolucion DNS consistente con servidores autoritativos" },
-      { name: "SSL Stripping", detail: "HSTS activo, conexion HTTPS forzada correctamente" },
-      { name: "Rogue WiFi", detail: "Red WiFi autenticada con WPA2/WPA3" },
-      { name: "Evil Twin", detail: "No se detectaron redes duplicadas con el mismo SSID" },
-      { name: "ARP Spoofing", detail: "Tabla ARP consistente, sin entradas duplicadas" },
-      { name: "DNS Hijacking", detail: "DNS responde correctamente a consultas de verificacion" },
-      { name: "Certificados falsos", detail: "Cadena de certificados valida y confiable" },
-    ];
-
-    for (const check of checks) {
-      await new Promise((r) => setTimeout(r, 600 + Math.random() * 400));
-      const status = Math.random() > 0.15 ? "safe" : "warning";
-      setConnectionChecks((prev) => [...prev, {
-        name: check.name,
-        status,
-        detail: status === "safe" ? check.detail : `Se detecto una anomalia: ${check.detail.toLowerCase()}`,
-      }]);
+    try {
+      const data = await api.checkNetwork();
+      setResult(data);
+    } catch {
+      setError("No se pudo verificar la conexion con el servidor.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const needsInput = feature.placeholder !== "";
@@ -104,7 +88,7 @@ export default function PremiumFeatures() {
         {PREMIUM_FEATURES.map((f, i) => (
           <button
             key={f.id}
-            onClick={() => { setSelected(i); setInput(""); setResult(null); setConnectionChecks([]); }}
+            onClick={() => { setSelected(i); setInput(""); setResult(null); }}
             className={cn(
               "flex items-start gap-2 p-3 rounded-lg border text-left transition-all",
               selected === i
@@ -145,36 +129,6 @@ export default function PremiumFeatures() {
         </button>
       </div>
 
-      {/* Connection audit results */}
-      {connectionChecks.length > 0 && (
-        <div className="space-y-2">
-          {connectionChecks.map((check, i) => (
-            <div key={i} className={cn(
-              "flex items-center gap-3 p-3 rounded-lg border transition-all",
-              check.status === "safe" ? "bg-emerald-500/5 border-emerald-500/20" : "bg-amber-500/5 border-amber-500/20"
-            )}>
-              {check.status === "safe" ? (
-                <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
-              ) : (
-                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
-              )}
-              <div className="flex-1">
-                <p className="text-xs font-medium text-slate-300">{check.name}</p>
-                <p className="text-[11px] text-slate-500 mt-0.5">{check.detail}</p>
-              </div>
-              <Lock className={cn("w-3 h-3", check.status === "safe" ? "text-emerald-400" : "text-amber-400")} />
-            </div>
-          ))}
-          {!loading && connectionChecks.length === 9 && (
-            <div className="rounded-xl bg-emerald-500/5 border border-emerald-500/20 p-4 text-center mt-4">
-              <ShieldCheck className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
-              <p className="text-sm font-semibold text-emerald-400">Tu conexion parece segura</p>
-              <p className="text-xs text-emerald-400/70 mt-1">No se detectaron ataques activos en tu red</p>
-            </div>
-          )}
-        </div>
-      )}
-
       {error && (
         <div className="rounded-xl bg-red-500/5 border border-red-500/20 p-4 flex items-start gap-3">
           <AlertTriangle className="w-5 h-5 text-red-400 shrink-0" />
@@ -183,31 +137,51 @@ export default function PremiumFeatures() {
       )}
 
       {result && !loading && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="rounded-xl bg-[#111827] border border-[#1e293b] p-5 flex items-center justify-center">
-            <RiskGauge score={result.risk_score.total} size={160} />
-          </div>
-          <div className="rounded-xl bg-[#111827] border border-[#1e293b] p-5 lg:col-span-2">
-            <h3 className="text-sm font-semibold text-slate-300 mb-3">Resultados</h3>
-            {result.findings.length === 0 ? (
-              <div className="flex items-center gap-2 text-emerald-400 py-4">
-                <CheckCircle className="w-5 h-5" />
-                <span className="text-sm">No se encontraron problemas</span>
+        <div className="space-y-4">
+          {(feature.id === "connection" || feature.id === "full-audit") && (
+            <div className="rounded-xl bg-cyan-500/5 border border-cyan-500/20 p-4 flex items-start gap-3">
+              <Lock className="w-5 h-5 text-cyan-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-cyan-300">
+                  Analisis real de red
+                </p>
+                <p className="text-xs text-slate-400 mt-1">
+                  Este resultado viene del backend. Desde una web no se puede
+                  inspeccionar tabla ARP, redes cercanas ni configuracion
+                  interna del modem, pero si se revisan senales de conectividad,
+                  DNS/TLS y anomalias disponibles para la app.
+                </p>
               </div>
-            ) : (
-              <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                {result.findings.map((f, i) => (
-                  <div key={i} className={cn("flex items-start gap-3 p-3 rounded-lg border", getRiskBg(f.severity))}>
-                    <AlertTriangle className={cn("w-4 h-4 shrink-0 mt-0.5", getRiskColor(f.severity))} />
-                    <div>
-                      <p className="text-xs font-medium text-slate-300">{f.type}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">{f.description}</p>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="rounded-xl bg-[#111827] border border-[#1e293b] p-5 flex items-center justify-center">
+              <RiskGauge score={result.risk_score.total} size={160} />
+            </div>
+            <div className="rounded-xl bg-[#111827] border border-[#1e293b] p-5 lg:col-span-2">
+              <h3 className="text-sm font-semibold text-slate-300 mb-3">Resultados</h3>
+              {result.findings.length === 0 ? (
+                <div className="flex items-center gap-2 text-emerald-400 py-4">
+                  <CheckCircle className="w-5 h-5" />
+                  <span className="text-sm">No se encontraron problemas</span>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                  {result.findings.map((f, i) => (
+                    <div key={i} className={cn("flex items-start gap-3 p-3 rounded-lg border", getRiskBg(f.severity))}>
+                      <AlertTriangle className={cn("w-4 h-4 shrink-0 mt-0.5", getRiskColor(f.severity))} />
+                      <div>
+                        <p className="text-xs font-medium text-slate-300">{f.type}</p>
+                        <p className="text-xs text-slate-400 mt-0.5">{f.description}</p>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
+          <SecurityReport result={result} title={`Reporte premium - ${feature.label}`} />
         </div>
       )}
     </div>
