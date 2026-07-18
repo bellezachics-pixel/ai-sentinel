@@ -449,7 +449,41 @@ class AnalysisOrchestrator:
         breaches = hibp_result.get("breaches", [])
 
         findings = []
-        if error:
+        if check_type == "phone":
+            provider = hibp_result.get("provider", "phone")
+            valid = hibp_result.get("valid")
+            if error:
+                findings.append({
+                    "type": "phone_lookup_error",
+                    "severity": "medium",
+                    "description": error,
+                    "source": provider,
+                })
+            elif valid is False:
+                findings.append({
+                    "type": "invalid_phone",
+                    "severity": "medium",
+                    "description": hibp_result.get("message", "El numero no parece valido."),
+                    "source": provider,
+                    "details": hibp_result,
+                })
+            else:
+                details = [
+                    f"Pais: {hibp_result.get('country', 'N/A')}",
+                    f"Operador: {hibp_result.get('carrier', 'N/A')}",
+                    f"Tipo: {hibp_result.get('line_type', 'N/A')}",
+                ]
+                caller_name = hibp_result.get("caller_name")
+                if caller_name and caller_name != "N/A":
+                    details.append(f"Nombre registrado: {caller_name}")
+                findings.append({
+                    "type": "phone_verified",
+                    "severity": "low",
+                    "description": "Telefono verificado. " + " | ".join(details),
+                    "source": provider,
+                    "details": hibp_result,
+                })
+        elif error:
             findings.append({
                 "type": "identity_check_error",
                 "severity": "medium",
@@ -484,6 +518,12 @@ class AnalysisOrchestrator:
                 "Activa la autenticación de dos factores (2FA).",
                 "No reutilices contraseñas entre servicios.",
             ])
+        if check_type == "phone":
+            recommendations.extend([
+                "No compartas codigos SMS ni enlaces recibidos por llamadas o mensajes.",
+                "Activa bloqueo de SIM/PIN con tu operador si sospechas fraude.",
+                "Verifica llamadas sospechosas por un canal oficial antes de pagar o entregar datos.",
+            ])
 
         result = AnalysisResult(
             id=analysis_id,
@@ -496,6 +536,7 @@ class AnalysisOrchestrator:
             metadata={
                 "check_type": check_type,
                 "hibp_result": hibp_result,
+                "phone_result": hibp_result if check_type == "phone" else None,
                 "breaches": breaches,
             },
         )

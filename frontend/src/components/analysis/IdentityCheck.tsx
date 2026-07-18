@@ -14,6 +14,16 @@ interface BreachInfo {
   data: string[] | string;
 }
 
+interface PhoneResult {
+  provider?: string;
+  valid?: boolean;
+  country?: string;
+  carrier?: string;
+  line_type?: string;
+  caller_name?: string;
+  message?: string;
+}
+
 const CHECKS = [
   { id: "email", label: "Correo filtrado", icon: Mail, placeholder: "tu@correo.com", description: "Busca si tu correo aparecio en filtraciones de datos" },
   { id: "phone", label: "Telefono filtrado", icon: Phone, placeholder: "+52 555 123 4567", description: "Busca si tu numero aparece en filtraciones o reportes de spam" },
@@ -45,10 +55,14 @@ export default function IdentityCheck() {
     }
   };
 
-  const resultMeta = result?.metadata as { breaches?: BreachInfo[] } | undefined;
+  const checkType = CHECKS[selectedCheck].id;
+  const resultMeta = result?.metadata as
+    | { breaches?: BreachInfo[]; phone_result?: PhoneResult }
+    | undefined;
   const breaches = resultMeta?.breaches || [];
-  const found = result?.findings.some((f) => f.type === "breach_found");
-  const apiError = result?.findings.some((f) => f.type === "identity_check_error");
+  const phoneResult = resultMeta?.phone_result;
+  const found = result?.findings.some((f) => f.type === "breach_found" || f.type === "invalid_phone");
+  const apiError = result?.findings.some((f) => f.type === "identity_check_error" || f.type === "phone_lookup_error");
 
   return (
     <div className="space-y-6 animate-fade-in-up">
@@ -112,7 +126,11 @@ export default function IdentityCheck() {
       {loading && (
         <div className="rounded-xl bg-[#111827] border border-[#1e293b] p-8 flex flex-col items-center gap-4">
           <Loader2 className="w-10 h-10 text-cyan-400 animate-spin" />
-          <p className="text-sm text-slate-300">Buscando en bases de datos de filtraciones...</p>
+          <p className="text-sm text-slate-300">
+            {checkType === "phone"
+              ? "Verificando reputacion del telefono..."
+              : "Buscando en bases de datos de filtraciones..."}
+          </p>
         </div>
       )}
 
@@ -136,8 +154,14 @@ export default function IdentityCheck() {
               <>
                 <ShieldAlert className="w-8 h-8 text-red-400" />
                 <div>
-                  <p className="text-lg font-bold text-red-400">Datos comprometidos</p>
-                  <p className="text-sm text-red-400/70">Se encontraron {breaches.length} filtracion(es)</p>
+                  <p className="text-lg font-bold text-red-400">
+                    {checkType === "phone" ? "Telefono no validado" : "Datos comprometidos"}
+                  </p>
+                  <p className="text-sm text-red-400/70">
+                    {checkType === "phone"
+                      ? "Revisa el numero antes de confiar en llamadas o mensajes"
+                      : `Se encontraron ${breaches.length} filtracion(es)`}
+                  </p>
                 </div>
               </>
             ) : apiError ? (
@@ -154,14 +178,36 @@ export default function IdentityCheck() {
               <>
                 <CheckCircle className="w-8 h-8 text-emerald-400" />
                 <div>
-                  <p className="text-lg font-bold text-emerald-400">No se encontraron filtraciones</p>
-                  <p className="text-sm text-emerald-400/70">Tus datos no aparecen en bases de datos conocidas</p>
+                  <p className="text-lg font-bold text-emerald-400">
+                    {checkType === "phone" ? "Telefono verificado" : "No se encontraron filtraciones"}
+                  </p>
+                  <p className="text-sm text-emerald-400/70">
+                    {checkType === "phone"
+                      ? phoneResult?.message || "El proveedor devolvio informacion valida del numero"
+                      : "Tus datos no aparecen en bases de datos conocidas"}
+                  </p>
                 </div>
               </>
             )}
           </div>
 
-          {found && (
+          {checkType === "phone" && phoneResult && !apiError && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+              {[
+                ["Proveedor", phoneResult.provider || "N/A"],
+                ["Pais", phoneResult.country || "N/A"],
+                ["Operador", phoneResult.carrier || "N/A"],
+                ["Tipo de linea", phoneResult.line_type || "N/A"],
+              ].map(([label, value]) => (
+                <div key={label} className="bg-[#111827] rounded-lg p-3 border border-emerald-500/10">
+                  <p className="text-[10px] uppercase text-slate-500 mb-1">{label}</p>
+                  <p className="text-xs text-slate-300">{value}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {found && checkType !== "phone" && (
             <div className="space-y-3 mt-4">
               {breaches.map((breach, i) => (
                 <div key={i} className="bg-[#111827] rounded-lg p-4 border border-red-500/10">

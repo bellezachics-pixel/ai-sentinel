@@ -69,7 +69,8 @@ Variable:
 NUMVERIFY_API_KEY=
 ```
 
-Mas simple para validar numeros y mostrar informacion basica.
+Mas simple para validar numeros y mostrar informacion basica. Centinela lo usa
+automaticamente cuando esta variable existe.
 
 ### Twilio Lookup
 
@@ -82,6 +83,29 @@ TWILIO_LOOKUP_FROM_COUNTRY=US
 ```
 
 Mas profesional para producto final, pero normalmente requiere cuenta con billing.
+Centinela lo usa como alternativa cuando no hay `NUMVERIFY_API_KEY`.
+
+## Prioridad 3 - inteligencia adicional
+
+### URLScan
+
+Variable:
+
+```env
+URLSCAN_API_KEY=
+```
+
+Activa analisis visual y reputacional adicional para URLs y dominios.
+
+### AbuseIPDB
+
+Variable:
+
+```env
+ABUSEIPDB_API_KEY=
+```
+
+Activa reputacion adicional para direcciones IP.
 
 ## Seguridad pendiente
 
