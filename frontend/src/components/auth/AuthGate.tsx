@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Lock, Loader2, LogIn, Mail, Shield, UserPlus } from "lucide-react";
 import {
+  ApiError,
   api,
   clearAuthTokens,
   getAccessToken,
@@ -81,11 +82,14 @@ export default function AuthGate({ children }: AuthGateProps) {
       setAuthTokens(tokens.access_token, tokens.refresh_token);
       const profile = await api.getMe();
       setUser(profile);
-    } catch {
+    } catch (err) {
+      const backendMessage =
+        err instanceof ApiError || err instanceof Error ? err.message : "";
       setError(
-        mode === "login"
-          ? "No se pudo iniciar sesion. Revisa usuario y contrasena."
-          : "No se pudo crear la cuenta. Usa una contrasena fuerte y datos validos."
+        backendMessage ||
+          (mode === "login"
+            ? "No se pudo iniciar sesion. Revisa usuario y contrasena."
+            : "No se pudo crear la cuenta. Usa una contrasena fuerte y datos validos.")
       );
     } finally {
       setSubmitting(false);
@@ -213,7 +217,13 @@ export default function AuthGate({ children }: AuthGateProps) {
           ) : (
             <Lock className="h-4 w-4" />
           )}
-          {mode === "login" ? "Iniciar sesion" : "Crear cuenta"}
+          {submitting
+            ? mode === "login"
+              ? "Entrando..."
+              : "Creando cuenta..."
+            : mode === "login"
+              ? "Iniciar sesion"
+              : "Crear cuenta"}
         </button>
 
         {mode === "register" && (

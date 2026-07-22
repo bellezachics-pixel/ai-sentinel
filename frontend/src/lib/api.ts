@@ -4,6 +4,29 @@ const API_BASE =
 const TOKEN_KEY = "ai_sentinel_access_token";
 const REFRESH_TOKEN_KEY = "ai_sentinel_refresh_token";
 const LEGACY_TOKEN_KEY = "ai_sentinel_token";
+const REQUEST_TIMEOUT_MS = 20000;
+
+export class ApiError extends Error {
+  status: number;
+  detail?: unknown;
+
+  constructor(status: number, statusText: string, detail?: unknown) {
+    const message =
+      typeof detail === "string"
+        ? detail
+        : Array.isArray(detail)
+          ? detail
+              .map((item) =>
+                typeof item?.msg === "string" ? item.msg : JSON.stringify(item)
+              )
+              .join(" ")
+          : `API Error: ${status} ${statusText}`;
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.detail = detail;
+  }
+}
 
 export function getAccessToken() {
   if (typeof window === "undefined") return null;
@@ -120,37 +143,74 @@ export interface UserProfile {
 
 async function apiFetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const token = getAccessToken();
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...((options?.headers as Record<string, string> | undefined) || {}),
   };
 
-  const res = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  try {
+    const res = await fetch(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers,
+      signal: options?.signal || controller.signal,
+    });
 
-  if (!res.ok) {
-    throw new Error(`API Error: ${res.status} ${res.statusText}`);
+    if (!res.ok) {
+      let detail: unknown;
+      try {
+        detail = (await res.json()).detail;
+      } catch {
+        detail = undefined;
+      }
+      throw new ApiError(res.status, res.statusText, detail);
+    }
+
+    return res.json();
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error("La solicitud tardo demasiado. Intenta de nuevo.");
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
   }
-
-  return res.json();
 }
 
 async function apiFormData(endpoint: string, formData: FormData) {
   const token = getAccessToken();
-  const res = await fetch(`${API_BASE}${endpoint}`, {
-    method: "POST",
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-    body: formData,
-  });
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
-  if (!res.ok) {
-    throw new Error(`API Error: ${res.status} ${res.statusText}`);
+  try {
+    const res = await fetch(`${API_BASE}${endpoint}`, {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      body: formData,
+      signal: controller.signal,
+    });
+
+    if (!res.ok) {
+      let detail: unknown;
+      try {
+        detail = (await res.json()).detail;
+      } catch {
+        detail = undefined;
+      }
+      throw new ApiError(res.status, res.statusText, detail);
+    }
+
+    return res.json() as Promise<AnalysisResult>;
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error("La solicitud tardo demasiado. Intenta de nuevo.");
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
   }
-
-  return res.json() as Promise<AnalysisResult>;
 }
 
 type LoginInput = { username: string; password: string } | string;
