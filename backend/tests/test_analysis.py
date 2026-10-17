@@ -153,3 +153,22 @@ def test_dashboard_stats_anonymous_sees_empty(auth_client, fast_network):
     stats = resp.json()
     assert stats["total_scans"] == 0
     assert stats["recent_analyses"] == []
+
+
+def test_identity_password_no_se_persiste_en_historial(client, auth_client):
+    """La contraseña verificada nunca se escribe en el historial ni se devuelve cruda."""
+    client, user = auth_client
+    secret = "MiClaveSuperSecreta123!"
+    resp = client.post(
+        "/api/v1/analyze/identity",
+        json={"value": secret, "check_type": "password"},
+        headers=user["headers"],
+    )
+    assert resp.status_code == 200
+    body = resp.text
+    assert secret not in body
+    stats = client.get("/api/v1/dashboard/stats", headers=user["headers"]).json()
+    recent = stats.get("recent_analyses", [])
+    targets = [a.get("target", "") for a in recent]
+    assert any("[contraseña oculta]" in t for t in targets)
+    assert all(secret not in t for t in targets)

@@ -23,6 +23,20 @@ from app.core import history_store
 from app.services.risk_engine import risk_engine
 
 
+def _mask_identity_target(value: str, check_type: str) -> str:
+    """Devuelve una versión segura del valor verificado para mostrar/persistir.
+
+    - password: nunca se expone (ni siquiera parcialmente).
+    - phone: se enmascaran los dígitos centrales (dato personal).
+    - email/username: se conservan (el correo es el identificador de la cuenta).
+    """
+    if check_type == "password":
+        return "[contraseña oculta]"
+    if check_type == "phone" and len(value) > 4:
+        return f"{value[:2]}***{value[-2:]}"
+    return value
+
+
 class AnalysisOrchestrator:
     def __init__(self):
         self._url_analyzer = None
@@ -519,7 +533,10 @@ class AnalysisOrchestrator:
         result = AnalysisResult(
             id=analysis_id,
             analysis_type=AnalysisType.FULL_SCAN,
-            target=value,
+            # Nunca persistir ni devolver el valor crudo de verificaciones
+            # sensibles: contrasenas se ocultan por completo; telefonos se
+            # enmascaran para no escribir datos personales en el historial.
+            target=_mask_identity_target(value, check_type),
             timestamp=datetime.utcnow(),
             risk_score=risk_score,
             findings=findings,
