@@ -40,7 +40,6 @@ services:
         value: false
       - key: ALLOWED_ORIGINS
         value: "https://guardiaflow-staging-frontend.onrender.com"
-        sync: false
       # Stripe MODO TEST. Gabiotita las pega en el dashboard; nunca en el repo.
       - key: STRIPE_SECRET_KEY
         sync: false
@@ -66,7 +65,6 @@ services:
         value: https://guardiaflow-staging-frontend.onrender.com
       - key: NEXT_PUBLIC_API_URL
         value: https://guardiaflow-staging-backend.onrender.com
-        sync: false
       # 🔒 OBLIGATORIO en staging: contraseña del gate (middleware).
       # Gabiotita la escribe en el dashboard de Render; jamás en el chat.
       - key: STAGING_PASSWORD
