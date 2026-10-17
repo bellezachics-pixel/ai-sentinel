@@ -7,8 +7,13 @@
 #     o se sincroniza sobre los servicios existentes. Los servicios de
 #     producción deben estar en plan Starter ($7/mes c/u) y el backend
 #     requiere el disco persistente (solo disponible en instancias pagas).
-#   - Staging: NO uses este blueprint para crear los servicios gratis;
-#     créalos a mano en el dashboard (ver DESPLIEGUE-GUARDIA-FLOW.md, sección A).
+# ⚠️ COSTOS: este blueprint define un DISCO PERSISTENTE, que en Render solo
+# puede adjuntarse a una instancia PAGA. Aplicar este archivo fuerza el plan
+# Starter ($7/mes) en el backend (y se recomienda Starter también en el
+# frontend para producción: total ~$14.55/mes con snapshots).
+# Para STAGING GRATUITO ($0) usa render-staging.yaml (sin disco, instancias
+# free; los datos de prueba son efímeros, ver advertencias en ese archivo).
+# NO apliques este archivo si no has autorizado el gasto.
 #
 # Dominios de producción:
 #   - Frontend: https://guardiaflow.com y https://www.guardiaflow.com

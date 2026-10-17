@@ -36,3 +36,20 @@ def test_injection_pattern_in_query_rejected(client):
         params={"q": "<script>alert(1)</script>"},
     )
     assert resp.status_code == 400
+
+
+def test_rate_limit_por_grupo_no_comparte_presupuesto(client, auth_client):
+    """Navegar el dashboard no agota el presupuesto de /auth/login (bug real)."""
+    from app.core.security import rate_limit_store
+
+    rate_limit_store.requests.clear()
+    # 20 GETs a un endpoint de grupo 'default' (p.ej. dashboard)
+    for _ in range(20):
+        resp = client.get("/api/v1/dashboard/stats")
+        assert resp.status_code in (200, 401, 402)
+    # El login conserva su presupuesto propio (5/min)
+    resp = client.post(
+        "/api/v1/auth/login",
+        json={"username": "nadie", "password": "Fake@1234"},
+    )
+    assert resp.status_code == 401  # no 429: el rate limit del login no se consumió

@@ -73,10 +73,19 @@ RATE_LIMITS = {
 
 
 def get_rate_limit(path: str) -> int:
-    for prefix, limit in RATE_LIMITS.items():
+    return RATE_LIMITS.get(get_rate_limit_prefix(path), RATE_LIMITS["default"])
+
+
+def get_rate_limit_prefix(path: str) -> str:
+    """Grupo de rate limit que aplica a la ruta (ej. '/api/v1/auth/login').
+
+    Los contadores se guardan por (IP, grupo): navegar el dashboard ya no
+    consume el presupuesto de login ni viceversa.
+    """
+    for prefix in RATE_LIMITS:
         if prefix != "default" and path.startswith(prefix):
-            return limit
-    return RATE_LIMITS["default"]
+            return prefix
+    return "default"
 
 
 # ============================================================
@@ -147,9 +156,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 headers={"Retry-After": "300"},
             )
 
-        # Check rate limit
+        # Check rate limit (contadores por IP + grupo de endpoint, no global)
         limit = get_rate_limit(request.url.path)
-        current_count = rate_limit_store.get_request_count(client_ip)
+        rl_key = f"{client_ip}|{get_rate_limit_prefix(request.url.path)}"
+        current_count = rate_limit_store.get_request_count(rl_key)
 
         if current_count >= limit:
             # Block IP if way over limit
@@ -165,7 +175,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 },
             )
 
-        rate_limit_store.add_request(client_ip)
+        rate_limit_store.add_request(rl_key)
 
         response = await call_next(request)
 

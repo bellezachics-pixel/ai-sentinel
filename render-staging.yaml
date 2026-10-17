@@ -1,0 +1,73 @@
+# ============================================================
+# GUARDIA FLOW — Render Blueprint (STAGING GRATUITO)
+# Fecha: 2026-10-17
+#
+# ⚠️ DIFERENCIAS CLAVE CON render.yaml (producción):
+#   - SIN disco persistente → ambos servicios caben en instancia FREE ($0).
+#   - El filesystem de una instancia free es EFÍMERO: los datos (usuarios de
+#     prueba, historial) SE PIERDEN al redeployar o reiniciar el servicio
+#     (incluido el apagado por inactividad). Es normal para staging.
+#     Para pruebas que abarcan varios días (trial de 3 días), hazlas en una
+#     o dos sesiones, o usa el entorno local (COMO-INICIAR-PRUEBAS.md).
+#
+# Aplicar: dashboard de Render → New → Blueprint → este repo → elegir ESTE
+# archivo cuando Render pregunte, o renombrarlo a render.yaml en una rama
+# "staging". Nombres de servicio separados de producción para no chocar.
+# ============================================================
+
+services:
+  - type: web
+    name: guardiaflow-staging-backend
+    runtime: python
+    region: oregon
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1
+    healthCheckPath: /api/v1/health
+    # FREE: sin bloque disk (el disco persistente exige instancia pagos).
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.0"
+      - key: ENVIRONMENT
+        value: development
+      - key: DEBUG
+        value: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: FRONTEND_URL
+        value: https://guardiaflow-staging-frontend.onrender.com
+      - key: REQUIRE_AUTH_FOR_ANALYSIS
+        value: false
+      - key: ALLOWED_ORIGINS
+        value: "https://guardiaflow-staging-frontend.onrender.com"
+        sync: false
+      # Stripe MODO TEST. Gabiotita las pega en el dashboard; nunca en el repo.
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_PRICE_ID
+        sync: false
+      - key: ADMIN_EMAILS
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+
+  - type: web
+    name: guardiaflow-staging-frontend
+    runtime: node
+    region: oregon
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    startCommand: npm run start -- -p $PORT
+    # FREE: instancia gratuita (duerme con inactividad; despierta en ~1 min).
+    envVars:
+      - key: NEXT_PUBLIC_SITE_URL
+        value: https://guardiaflow-staging-frontend.onrender.com
+      - key: NEXT_PUBLIC_API_URL
+        value: https://guardiaflow-staging-backend.onrender.com
+        sync: false
+      # 🔒 OBLIGATORIO en staging: contraseña del gate (middleware).
+      # Gabiotita la escribe en el dashboard de Render; jamás en el chat.
+      - key: STAGING_PASSWORD
+        sync: false
