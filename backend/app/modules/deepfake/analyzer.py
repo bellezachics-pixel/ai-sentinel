@@ -1,5 +1,5 @@
 """
-AI-Sentinel Deepfake Analyzer Module
+Guardia Flow Deepfake Analyzer Module
 
 Analyzes image and audio file METADATA for manipulation signs and
 synthetic media indicators (EXIF, headers, tags, typical AI dimensions).

@@ -30,16 +30,16 @@ import LandingHeader from "@/components/landing/LandingHeader";
 import FaqAccordion from "@/components/landing/FaqAccordion";
 
 export const metadata: Metadata = {
-  title: "CENTINELA — Tu guardián digital | Protección para personas, sin tecnicismos",
+  title: "GUARDIA FLOW — Tu guardián digital | Protección para personas, sin tecnicismos",
   description:
-    "CENTINELA analiza enlaces, correos, mensajes, QR, archivos e imágenes para detectar phishing, estafas y señales de manipulación con IA. Prueba 3 días gratis, luego US$16/mes. Cancela cuando quieras.",
+    "Guardia Flow analiza enlaces, correos, mensajes, QR, archivos e imágenes para detectar phishing, estafas y señales de manipulación con IA. Prueba 3 días gratis, luego US$16/mes. Cancela cuando quieras.",
   openGraph: {
-    title: "CENTINELA — Tu guardián digital",
+    title: "GUARDIA FLOW — Tu guardián digital",
     description:
       "Protección digital para personas sin conocimientos técnicos: analiza enlaces, correos, mensajes, QR y archivos sospechosos en segundos. 3 días gratis.",
     type: "website",
     locale: "es_419",
-    siteName: "CENTINELA",
+    siteName: "Guardia Flow",
   },
 };
 
@@ -110,7 +110,7 @@ const TOOLS = [
   {
     icon: Server,
     title: "Chequeo de servidores y redes",
-    text: "Verifica certificados TLS, HTTPS y puertos de un objetivo desde los servidores de CENTINELA.",
+    text: "Verifica certificados TLS, HTTPS y puertos de un objetivo desde los servidores de Guardia Flow.",
   },
   {
     icon: BrainCircuit,
@@ -128,7 +128,7 @@ const LIMITS = [
   {
     icon: ShieldQuestion,
     title: "Ningún producto detecta el 100% de las amenazas",
-    text: "CENTINELA es una capa más de protección, no un escudo absoluto. Combinarlo con buenos hábitos digitales siempre es la mejor estrategia.",
+    text: "Guardia Flow es una capa más de protección, no un escudo absoluto. Combinarlo con buenos hábitos digitales siempre es la mejor estrategia.",
   },
   {
     icon: Eye,
@@ -138,12 +138,12 @@ const LIMITS = [
   {
     icon: Wifi,
     title: "La detección en tu red local requiere el agente opcional",
-    text: "El monitoreo de ARP/DNS dentro de tu propia red (Wi-Fi de casa u oficina) necesita nuestro agente local opcional. La versión web analiza objetivos desde los servidores de CENTINELA.",
+    text: "El monitoreo de ARP/DNS dentro de tu propia red (Wi-Fi de casa u oficina) necesita nuestro agente local opcional. La versión web analiza objetivos desde los servidores de Guardia Flow.",
   },
   {
     icon: Lock,
     title: "Nunca pedimos contraseñas de otros servicios",
-    text: "CENTINELA jamás te pedirá la contraseña de tu banco, correo o redes sociales para ‘protegerte’. Si alguien lo hace, es una estafa.",
+    text: "Guardia Flow jamás te pedirá la contraseña de tu banco, correo o redes sociales para ‘protegerte’. Si alguien lo hace, es una estafa.",
   },
 ];
 
@@ -156,17 +156,17 @@ const FAQ_ITEMS = [
   {
     question: "¿Cómo cancelo mi suscripción?",
     answer:
-      "Puedes cancelar en cualquier momento desde tu panel, en la sección de suscripción, o escribiéndonos a hola@centinela.app. La cancelación tiene efecto al final del período en curso: si cancelas durante la prueba, no se realiza ningún cargo.",
+      "Puedes cancelar en cualquier momento desde tu panel, en la sección de suscripción, o escribiéndonos a soporte@guardiaflow.com. La cancelación tiene efecto al final del período en curso: si cancelas durante la prueba, no se realiza ningún cargo.",
   },
   {
     question: "¿Qué datos guardan sobre mí?",
     answer:
-      "Guardamos tu correo de cuenta, tu contraseña cifrada y un historial de los análisis que realizas. El contenido que analizas se procesa para darte el resultado y no se conserva después del análisis, salvo que tú mismo guardes un informe. Nunca almacenamos las contraseñas de otros servicios. Puedes pedir la eliminación de tus datos escribiendo a hola@centinela.app.",
+      "Guardamos tu correo de cuenta, tu contraseña cifrada y un historial de los análisis que realizas. El contenido que analizas se procesa para darte el resultado y no se conserva después del análisis, salvo que tú mismo guardes un informe. Nunca almacenamos las contraseñas de otros servicios. Puedes pedir la eliminación de tus datos escribiendo a soporte@guardiaflow.com.",
   },
   {
     question: "¿Necesito instalar algo en mi computadora o celular?",
     answer:
-      "No. CENTINELA funciona completamente desde el navegador, tanto en computadora como en celular, y puedes instalarlo como app (PWA) para acceder más rápido. Solo si quieres monitorear tu red local (Wi-Fi) necesitas nuestro agente opcional.",
+      "No. Guardia Flow funciona completamente desde el navegador, tanto en computadora como en celular, y puedes instalarlo como app (PWA) para acceder más rápido. Solo si quieres monitorear tu red local (Wi-Fi) necesitas nuestro agente opcional.",
   },
   {
     question: "¿Sirve para alguien que no sabe de tecnología?",
@@ -176,7 +176,7 @@ const FAQ_ITEMS = [
   {
     question: "¿Los pagos son seguros?",
     answer:
-      "Los pagos se procesan a través de Stripe, una de las plataformas de pago más usadas del mundo. CENTINELA no almacena los datos de tu tarjeta; la suscripción se gestiona desde el portal seguro de Stripe.",
+      "Los pagos se procesan a través de Stripe, una de las plataformas de pago más usadas del mundo. Guardia Flow no almacena los datos de tu tarjeta; la suscripción se gestiona desde el portal seguro de Stripe.",
   },
 ];
 
@@ -209,7 +209,7 @@ export default function Home() {
             </h1>
             <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-slate-400 sm:text-lg">
               ¿Recibiste un enlace raro, un correo que pide tus datos o un
-              código QR que no te convence? Pégalo en CENTINELA y en segundos
+              código QR que no te convence? Pégalo en Guardia Flow y en segundos
               sabrás si es una amenaza y qué hacer al respecto. Sin tecnicismos,
               sin alarmismo.
             </p>
@@ -245,7 +245,7 @@ export default function Home() {
             </h2>
             <p className="mt-3 text-sm leading-6 text-slate-400 sm:text-base">
               Las estafas digitales están diseñadas para apurarte y
-              confundirte. CENTINELA las examina con calma, por ti.
+              confundirte. Guardia Flow las examina con calma, por ti.
             </p>
           </div>
           <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -294,7 +294,7 @@ export default function Home() {
               {
                 step: "2",
                 icon: BrainCircuit,
-                title: "CENTINELA lo analiza",
+                title: "GUARDIA FLOW lo analiza",
                 text: "Nuestros motores revisan señales de phishing, ingeniería social, metadatos, filtraciones de datos e inteligencia de amenazas.",
               },
               {
@@ -334,7 +334,7 @@ export default function Home() {
         <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="text-2xl font-bold text-white sm:text-3xl">
-              Qué incluye CENTINELA
+              Qué incluye GUARDIA FLOW
             </h2>
             <p className="mt-3 text-sm leading-6 text-slate-400 sm:text-base">
               Todas las herramientas en un solo panel, con historial de tus
@@ -371,7 +371,7 @@ export default function Home() {
               Transparencia primero
             </span>
             <h2 className="mt-5 text-2xl font-bold text-white sm:text-3xl">
-              Lo que CENTINELA no puede hacer
+              Lo que GUARDIA FLOW no puede hacer
             </h2>
             <p className="mt-3 text-sm leading-6 text-slate-400 sm:text-base">
               Nos tomamos en serio tu seguridad, y eso incluye ser honestos
@@ -411,7 +411,7 @@ export default function Home() {
               Un solo plan, precio claro
             </h2>
             <p className="mt-3 text-sm leading-6 text-slate-400 sm:text-base">
-              Sin planes confusos ni sorpresas. Todo CENTINELA, un precio.
+              Sin planes confusos ni sorpresas. Todo Guardia Flow, un precio.
             </p>
           </div>
 
@@ -420,7 +420,7 @@ export default function Home() {
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-lg font-bold text-white">
-                    CENTINELA Pro
+                    Guardia Flow Pro
                   </h3>
                   <p className="mt-1 text-xs text-slate-500">
                     Todo incluido, siempre
@@ -463,7 +463,7 @@ export default function Home() {
                 Primer cobro: al terminar tus 3 días gratis (la fecha exacta se
                 muestra en tu panel). Cancela antes sin ningún cargo. Renovación
                 mensual automática; cancela cuando quieras desde tu panel o
-                escribiéndonos a hola@centinela.app.
+                escribiéndonos a soporte@guardiaflow.com.
               </p>
               <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-500">
                 <CreditCard className="h-3.5 w-3.5" />
@@ -527,7 +527,7 @@ export default function Home() {
                 <Shield className="h-4 w-4 text-cyan-400" />
               </span>
               <div>
-                <p className="text-sm font-bold text-white">CENTINELA</p>
+                <p className="text-sm font-bold text-white">GUARDIA FLOW</p>
                 <p className="text-xs text-slate-500">
                   Tu guardián digital
                 </p>
@@ -548,16 +548,16 @@ export default function Home() {
               </Link>
               <a
                 className="transition-colors hover:text-cyan-300"
-                href="mailto:hola@centinela.app"
+                href="mailto:soporte@guardiaflow.com"
               >
-                hola@centinela.app
+                soporte@guardiaflow.com
               </a>
             </nav>
           </div>
           <p className="mt-8 text-xs text-slate-600">
-            © {new Date().getFullYear()} CENTINELA. Los pagos se procesan a
+            © {new Date().getFullYear()} GUARDIA FLOW. Los pagos se procesan a
             través de Stripe. Ningún producto de seguridad detecta el 100% de
-            las amenazas: usa CENTINELA como parte de buenos hábitos digitales.
+            las amenazas: usa Guardia Flow como parte de buenos hábitos digitales.
           </p>
         </div>
       </footer>

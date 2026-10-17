@@ -1,5 +1,5 @@
 """
-AI-Sentinel URL Analyzer Module
+Guardia Flow URL Analyzer Module
 
 Extracts URL features, checks for phishing patterns, homograph attacks,
 and calculates a 0-100 risk score for any given URL.

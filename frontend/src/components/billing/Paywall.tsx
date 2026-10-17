@@ -72,7 +72,7 @@ export default function Paywall() {
           Tu prueba gratuita terminó
         </h2>
         <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-400">
-          Sigue protegiéndote con CENTINELA Pro. Un solo plan, todo incluido,
+          Sigue protegiéndote con Guardia Flow Pro. Un solo plan, todo incluido,
           sin permanencias.
         </p>
 

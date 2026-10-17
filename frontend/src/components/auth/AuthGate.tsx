@@ -131,7 +131,7 @@ export default function AuthGate({ children }: AuthGateProps) {
             <Shield className="h-6 w-6 text-cyan-400" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-white">CENTINELA</h1>
+            <h1 className="text-lg font-bold text-white">GUARDIA FLOW</h1>
             <p className="text-xs text-slate-500">Acceso seguro al panel</p>
           </div>
         </div>

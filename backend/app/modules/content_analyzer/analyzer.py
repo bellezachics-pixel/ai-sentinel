@@ -1,5 +1,5 @@
 """
-AI-Sentinel Content Analyzer Module
+Guardia Flow Content Analyzer Module
 
 Analyzes HTML/text content for social engineering patterns, credential
 harvesting forms, obfuscated JavaScript, suspicious iframes, and hidden

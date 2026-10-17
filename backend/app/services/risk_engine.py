@@ -1,5 +1,5 @@
 """
-Risk Engine - Motor de Riesgo AI-Sentinel
+Risk Engine - Motor de Riesgo Guardia Flow
 Score Final = (Peso_URL * Score_URL) + (Peso_Contenido * Score_Contenido) +
               (Peso_Cabeceras * Score_Cabeceras) + (Peso_Red * Score_Intervencion_Red)
 """

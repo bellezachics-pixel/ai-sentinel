@@ -1,5 +1,5 @@
 """
-Rutas de Billing (Stripe TEST) - CENTINELA
+Rutas de Billing (Stripe TEST) - Guardia Flow
 
 Contrato del frontend (ver frontend/src/lib/billing.ts):
 - POST /api/v1/billing/checkout  -> {"checkout_url": str} | 409 | 503
@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/billing", tags=["Billing"])
 
-PRODUCT_NAME = "CENTINELA Pro"
+PRODUCT_NAME = "Guardia Flow Pro"
 PRODUCT_AMOUNT_CENTS = 1600  # US$16.00/mes
 TRIAL_PERIOD_DAYS = 3
 
@@ -75,7 +75,7 @@ def _frontend_billing_url(path: str) -> str:
 
 def _resolve_price_id(client) -> str:
     """
-    Devuelve STRIPE_PRICE_ID o busca/crea el producto "CENTINELA Pro"
+    Devuelve STRIPE_PRICE_ID o busca/crea el producto "Guardia Flow Pro"
     (USD 16/mes recurrente) en el dashboard de Stripe TEST. Los IDs creados
     se registran en el log para pegarlos en el .env.
     """

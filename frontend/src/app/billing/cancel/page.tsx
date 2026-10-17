@@ -52,7 +52,7 @@ export default function BillingCancelPage() {
           className="mt-6 inline-flex items-center gap-2 text-xs text-slate-600 transition-colors hover:text-cyan-300"
         >
           <Shield className="h-3.5 w-3.5" />
-          Volver a centinela.app
+          Volver a guardiaflow.com
         </Link>
       </div>
     </main>

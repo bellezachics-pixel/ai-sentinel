@@ -87,7 +87,7 @@ const navGroups: NavGroup[] = [
     items: [
       { id: "ia-detector", label: "Detector IA", icon: Bot },
       { id: "threat-intel", label: "Inteligencia de Amenazas", icon: Radar },
-      { id: "sentinel-ia", label: "Sentinel IA", icon: MessageCircle },
+      { id: "sentinel-ia", label: "Guardia IA", icon: MessageCircle },
     ],
   },
   {
@@ -158,7 +158,7 @@ export default function Sidebar({
         </div>
         {!collapsed && (
           <div className="overflow-hidden">
-            <h1 className="text-sm font-bold text-white tracking-wide">CENTINELA</h1>
+            <h1 className="text-sm font-bold text-white tracking-wide">GUARDIA FLOW</h1>
             <p className="text-[10px] text-cyan-400/70 tracking-widest uppercase">v1.0</p>
           </div>
         )}

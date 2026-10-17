@@ -66,7 +66,7 @@ function reportFileName(result: AnalysisResult) {
     .replace(/^-+|-+$/g, "")
     .slice(0, 40);
   const safeTarget = target || "analisis";
-  return `ai-sentinel-${safeTarget}-${new Date().toISOString().slice(0, 10)}.txt`;
+  return `guardiaflow-${safeTarget}-${new Date().toISOString().slice(0, 10)}.txt`;
 }
 
 async function copyToClipboard(text: string) {

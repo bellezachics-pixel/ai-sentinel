@@ -1,5 +1,5 @@
 """
-Security Middleware - Blindaje completo del backend AI-Sentinel
+Security Middleware - Blindaje completo del backend Guardia Flow
 - Rate Limiting
 - Security Headers (HSTS, CSP, X-Frame, etc.)
 - Request sanitization

@@ -59,7 +59,7 @@ export default function PlanStatusCard({ billing }: { billing: BillingStatus }) 
   let tone = "text-slate-400";
   let body: React.ReactNode = (
     <p>
-      Activa CENTINELA Pro para seguir usando todas las herramientas (
+      Activa Guardia Flow Pro para seguir usando todas las herramientas (
       {price(billing)}).
     </p>
   );
@@ -128,7 +128,7 @@ export default function PlanStatusCard({ billing }: { billing: BillingStatus }) 
             {title}
           </p>
           <p className="text-sm font-semibold text-white">
-            CENTINELA Pro · {price(billing)}
+            Guardia Flow Pro · {price(billing)}
           </p>
         </div>
       </div>

@@ -1,5 +1,5 @@
 """
-AI-Sentinel HTTP Header Analyzer Module
+Guardia Flow HTTP Header Analyzer Module
 
 Checks security headers, analyzes TLS certificate information, and detects
 Adversary-in-the-Middle (AiTM) proxy indicators.

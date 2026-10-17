@@ -1,5 +1,5 @@
 """
-Configuracion de pytest para AI-Sentinel backend.
+Configuracion de pytest para Guardia Flow backend.
 
 Debe ejecutarse asi (desde el directorio backend/):
     .venv/bin/python -m pytest tests/ -q

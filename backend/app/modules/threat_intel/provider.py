@@ -1,5 +1,5 @@
 """
-AI-Sentinel Threat Intelligence Provider Module
+Guardia Flow Threat Intelligence Provider Module
 
 Integrates with VirusTotal, Urlscan.io, and AbuseIPDB APIs.
 Gracefully handles missing API keys and service unavailability.

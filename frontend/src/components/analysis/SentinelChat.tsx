@@ -15,7 +15,7 @@ interface Message {
 const INITIAL_MSG: Message = {
   id: "0",
   role: "assistant",
-  content: "Hola! Soy Sentinel IA, tu asistente de ciberseguridad. Puedo ayudarte con:\n\n- Explicar riesgos de seguridad en lenguaje sencillo\n- Dar recomendaciones paso a paso\n- Responder dudas sobre phishing, malware, privacidad\n- Analizar situaciones sospechosas\n\nCuentame, en que te puedo ayudar?",
+  content: "Hola! Soy Guardia IA, tu asistente de ciberseguridad. Puedo ayudarte con:\n\n- Explicar riesgos de seguridad en lenguaje sencillo\n- Dar recomendaciones paso a paso\n- Responder dudas sobre phishing, malware, privacidad\n- Analizar situaciones sospechosas\n\nCuentame, en que te puedo ayudar?",
   timestamp: new Date(),
 };
 
@@ -73,7 +73,7 @@ export default function SentinelChat() {
           id: (Date.now() + 1).toString(),
           role: "assistant",
           content:
-            "No pude conectar con Sentinel IA ahora mismo. Revisa que el backend este activo y que NEXT_PUBLIC_API_URL apunte a tu API.",
+            "No pude conectar con Guardia IA ahora mismo. Revisa que el backend este activo y que NEXT_PUBLIC_API_URL apunte a tu API.",
           timestamp: new Date(),
         },
       ]);
@@ -86,7 +86,7 @@ export default function SentinelChat() {
     <div className="flex flex-col h-[calc(100vh-8rem)] animate-fade-in-up">
       <div className="mb-4">
         <h2 className="text-xl font-bold text-white flex items-center gap-2">
-          <MessageCircle className="w-6 h-6 text-cyan-400" /> Sentinel IA
+          <MessageCircle className="w-6 h-6 text-cyan-400" /> Guardia IA
         </h2>
         <p className="text-sm text-slate-500 mt-0.5">Chat inteligente para dudas de ciberseguridad</p>
       </div>

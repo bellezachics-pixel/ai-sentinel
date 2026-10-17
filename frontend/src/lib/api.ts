@@ -144,7 +144,7 @@ export interface PortalResponse {
 }
 
 /**
- * Crea una sesión de Stripe Checkout para suscribirse a CENTINELA Pro.
+ * Crea una sesión de Stripe Checkout para suscribirse a Guardia Flow Pro.
  * 409 si ya hay una suscripción activa; 503 si la pasarela de pagos no está configurada.
  */
 export function createCheckout(): Promise<CheckoutResponse> {

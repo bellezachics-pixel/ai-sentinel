@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "AI Sentinel",
-    short_name: "Sentinel",
+    name: "Guardia Flow",
+    short_name: "Guardia Flow",
     description:
       "Centro de ciberseguridad con IA para analizar URLs, mensajes, archivos, identidad digital y amenazas.",
     start_url: "/",

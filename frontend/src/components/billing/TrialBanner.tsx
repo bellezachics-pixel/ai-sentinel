@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Sparkles, X } from "lucide-react";
 import { daysUntil, formatPlanDate } from "./BillingContext";
 
-const DISMISS_KEY = "centinela_trial_banner_dismissed";
+const DISMISS_KEY = "guardiaflow_trial_banner_dismissed";
 
 interface TrialBannerProps {
   trialEnd: string | null;

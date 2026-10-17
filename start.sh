@@ -1,5 +1,5 @@
 #!/bin/bash
-# AI-Sentinel - Script de arranque local
+# Guardia Flow - Script de arranque local
 # Ejecuta backend y frontend en paralelo
 
 set -e
@@ -7,7 +7,7 @@ set -e
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 echo "========================================="
-echo "  AI-Sentinel - Ciberseguridad Avanzada"
+echo "  Guardia Flow - Ciberseguridad Avanzada"
 echo "========================================="
 echo ""
 
@@ -43,7 +43,7 @@ FRONTEND_PID=$!
 
 echo ""
 echo "========================================="
-echo "  AI-Sentinel esta corriendo!"
+echo "  Guardia Flow esta corriendo!"
 echo "  Frontend: http://localhost:3000"
 echo "  Backend:  http://localhost:8000"
 echo "  API Docs: http://localhost:8000/docs"

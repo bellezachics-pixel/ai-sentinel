@@ -47,7 +47,7 @@ export default function LandingHeader() {
             <Shield className="h-5 w-5 text-cyan-400" />
           </span>
           <span className="text-base font-bold tracking-wide text-white">
-            CENTINELA
+            GUARDIA FLOW
           </span>
         </Link>
 

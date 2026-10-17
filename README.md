@@ -1,6 +1,6 @@
-# AI-Sentinel - Ciberseguridad Avanzada con IA
+# Guardia Flow - Ciberseguridad Avanzada con IA
 
-Aplicacion de ciberseguridad potente con deteccion de phishing, intervencion de datos por IA (AiTM), QRishing, Deepfakes y Threat Intelligence en tiempo real.
+**Guardia Flow** (guardiaflow.com) es una aplicacion de ciberseguridad potente con deteccion de phishing, intervencion de datos por IA (AiTM), QRishing, Deepfakes y Threat Intelligence en tiempo real.
 
 ## Arquitectura
 
@@ -104,14 +104,14 @@ Crear credenciales OAuth 2.0 en Google Cloud y configurar estas variables en Ren
 GOOGLE_OAUTH_CLIENT_ID=...
 GOOGLE_OAUTH_CLIENT_SECRET=...
 GOOGLE_OAUTH_REDIRECT_URI=https://TU-BACKEND-RENDER.onrender.com/api/v1/auth/google/callback
-FRONTEND_URL=https://frontend-kappa-wheat-28.vercel.app
+FRONTEND_URL=https://guardiaflow.com
 ```
 
 En Google Cloud, agregar el mismo valor de `GOOGLE_OAUTH_REDIRECT_URI` en **Authorized redirect URIs**.
 
 ## Pasarela de pago (Stripe TEST)
 
-CENTINELA ofrece **3 dias de trial gratis** y despues una suscripcion de **US$16/mes**.
+Guardia Flow ofrece **3 dias de trial gratis** y despues una suscripcion de **US$16/mes**.
 La pasarela esta implementada **exclusivamente en modo TEST**: jamas uses claves live
 de Stripe en este proyecto.
 
@@ -129,7 +129,7 @@ ADMIN_EMAILS=admin@example.com       # opcional; emails con rol de admin (coma)
 ```
 
 - Si `STRIPE_PRICE_ID` se deja vacio, el backend busca (o crea) el producto
-  **"CENTINELA Pro"** (USD 16/mes recurrente) en la cuenta TEST y registra el
+  **"Guardia Flow Pro"** (USD 16/mes recurrente) en la cuenta TEST y registra el
   price ID en los logs para pegarlo en el `.env`.
 - Sin `STRIPE_SECRET_KEY`, el backend opera en **modo trial-only**: el checkout
   responde `503 pasarela_no_configurada` y solo el trial de 3 dias otorga acceso.
@@ -225,3 +225,8 @@ Formula:
 ```
 Score = (0.30 * URL) + (0.25 * Contenido) + (0.20 * Cabeceras) + (0.25 * Red)
 ```
+
+## Soporte
+
+- **Web:** https://guardiaflow.com
+- **Email:** soporte@guardiaflow.com

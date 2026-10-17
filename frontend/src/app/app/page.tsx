@@ -40,7 +40,7 @@ const VIEW_TITLES: Record<ViewType, string> = {
   medios: "Análisis de Medios",
   "qr-scanner": "Escaner de Codigos QR",
   red: "Monitor de Red",
-  "sentinel-ia": "Sentinel IA",
+  "sentinel-ia": "Guardia IA",
   "threat-intel": "Inteligencia de Amenazas",
   premium: "Herramientas Pro",
 };

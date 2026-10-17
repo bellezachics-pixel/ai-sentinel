@@ -10,7 +10,7 @@ interface IntegrationsStatusProps {
 }
 
 const LABELS: Record<string, string> = {
-  openai_chat: "Sentinel IA chat",
+  openai_chat: "Guardia IA chat",
   openai_vision: "Detector IA imagen",
   virustotal: "Archivos y URLs",
   google_fact_check: "Noticias",

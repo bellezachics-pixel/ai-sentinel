@@ -3,9 +3,9 @@ import ServiceWorkerRegister from "@/components/pwa/ServiceWorkerRegister";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "CENTINELA — Protección Digital",
+  title: "GUARDIA FLOW — Protección Digital",
   description:
-    "Protección digital impulsada por inteligencia artificial: análisis de enlaces, correos, archivos y medios para detectar amenazas antes de que te afecten.",
+    "Guardia Flow ofrece protección digital impulsada por inteligencia artificial: análisis de enlaces, correos, archivos y medios para detectar amenazas antes de que te afecten.",
   keywords: [
     "ciberseguridad",
     "AI",
@@ -14,12 +14,12 @@ export const metadata: Metadata = {
     "deepfake",
     "network security",
   ],
-  applicationName: "CENTINELA",
+  applicationName: "Guardia Flow",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "CENTINELA",
+    title: "Guardia Flow",
   },
   icons: {
     icon: [

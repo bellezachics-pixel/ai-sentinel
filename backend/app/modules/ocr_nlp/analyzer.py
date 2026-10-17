@@ -1,5 +1,5 @@
 """
-AI-Sentinel OCR & NLP Analyzer Module
+Guardia Flow OCR & NLP Analyzer Module
 
 Real NLP-based analysis for spear phishing detection and social
 engineering pattern recognition, plus image text extraction (OCR) via

@@ -1,5 +1,5 @@
 """
-Logica de acceso de CENTINELA (billing).
+Logica de acceso de Guardia Flow (billing).
 
 Reglas de negocio:
 - Trial local: 3 dias gratis desde `trial_start` (se graba al registrarse).

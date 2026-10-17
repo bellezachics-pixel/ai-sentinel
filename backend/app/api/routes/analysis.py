@@ -290,6 +290,6 @@ async def health_check():
     """Health check endpoint (publico)."""
     return {
         "status": "healthy",
-        "service": "AI-Sentinel",
+        "service": "Guardia Flow",
         "version": "1.0.0",
     }

@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import LegalPage from "@/components/legal/LegalPage";
 
 export const metadata: Metadata = {
-  title: "Uso responsable — CENTINELA",
+  title: "Uso responsable — GUARDIA FLOW",
   description:
-    "CENTINELA es una herramienta defensiva: para proteger tus propias cuentas y dispositivos. Conoce los usos permitidos y prohibidos.",
+    "Guardia Flow es una herramienta defensiva: para proteger tus propias cuentas y dispositivos. Conoce los usos permitidos y prohibidos.",
 };
 
 export default function ResponsibleUsePage() {
@@ -15,7 +15,7 @@ export default function ResponsibleUsePage() {
       sections={[
         {
           heading: "Finalidad defensiva",
-          body: "CENTINELA está diseñado para proteger: tu objetivo es verificar enlaces, correos, mensajes, códigos QR, archivos e imágenes que te llegan a ti, así como comprobar la seguridad de tus propios servicios y dispositivos. Úsalo para defenderte, para aprender y para tomar mejores decisiones digitales.",
+          body: "Guardia Flow está diseñado para proteger: tu objetivo es verificar enlaces, correos, mensajes, códigos QR, archivos e imágenes que te llegan a ti, así como comprobar la seguridad de tus propios servicios y dispositivos. Úsalo para defenderte, para aprender y para tomar mejores decisiones digitales.",
         },
         {
           heading: "Usos permitidos",
@@ -23,11 +23,11 @@ export default function ResponsibleUsePage() {
         },
         {
           heading: "Usos prohibidos",
-          body: "Está prohibido usar CENTINELA para analizar, escanear o sondear sistemas, redes o cuentas de terceros sin su autorización; para acosar, vigilar o espiar personas; para investigar a alguien sin una base legítima; o para cualquier actividad ilegal en tu jurisdicción. Tampoco subas malware activo, datos robados o credenciales de otras personas.",
+          body: "Está prohibido usar Guardia Flow para analizar, escanear o sondear sistemas, redes o cuentas de terceros sin su autorización; para acosar, vigilar o espiar personas; para investigar a alguien sin una base legítima; o para cualquier actividad ilegal en tu jurisdicción. Tampoco subas malware activo, datos robados o credenciales de otras personas.",
         },
         {
           heading: "Cómo interpretar los resultados",
-          body: "Los análisis de CENTINELA son orientativos y pueden contener falsos positivos o falsos negativos: ninguna herramienta detecta el 100% de las amenazas. El análisis de manipulación con IA se basa en metadatos y no es una prueba forense. Antes de bloquear a alguien, denunciar o tomar una decisión grave, confirma con fuentes adicionales y con criterio humano.",
+          body: "Los análisis de Guardia Flow son orientativos y pueden contener falsos positivos o falsos negativos: ninguna herramienta detecta el 100% de las amenazas. El análisis de manipulación con IA se basa en metadatos y no es una prueba forense. Antes de bloquear a alguien, denunciar o tomar una decisión grave, confirma con fuentes adicionales y con criterio humano.",
         },
         {
           heading: "Privacidad de terceros",
@@ -35,7 +35,7 @@ export default function ResponsibleUsePage() {
         },
         {
           heading: "Abuso del servicio",
-          body: "El uso abusivo de CENTINELA —por ejemplo, sondeos masivos no autorizados o uso que comprometa la seguridad o disponibilidad del servicio— puede derivar en la suspensión de funciones, restricción del acceso o cierre de la cuenta, además de las consecuencias legales que correspondan.",
+          body: "El uso abusivo de Guardia Flow —por ejemplo, sondeos masivos no autorizados o uso que comprometa la seguridad o disponibilidad del servicio— puede derivar en la suspensión de funciones, restricción del acceso o cierre de la cuenta, además de las consecuencias legales que correspondan.",
         },
       ]}
     />

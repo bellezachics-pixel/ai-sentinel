@@ -1,5 +1,5 @@
 """
-Upload hardening helpers - AI-Sentinel
+Upload hardening helpers - Guardia Flow
 
 Validates uploaded files before any module processes them:
 - Per-endpoint size limits

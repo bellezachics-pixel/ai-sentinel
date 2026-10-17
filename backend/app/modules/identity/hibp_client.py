@@ -4,7 +4,7 @@ import httpx
 from app.core.config import settings
 
 HIBP_BASE_URL = "https://haveibeenpwned.com/api/v3"
-USER_AGENT = "AI-Sentinel-App"
+USER_AGENT = "GuardiaFlow-App"
 
 
 class HIBPClient:

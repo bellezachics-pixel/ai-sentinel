@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import LegalPage from "@/components/legal/LegalPage";
 
 export const metadata: Metadata = {
-  title: "Privacidad — CENTINELA",
+  title: "Privacidad — GUARDIA FLOW",
   description:
-    "Qué datos guarda CENTINELA, cómo procesa los contenidos que analizas, qué terceros intervienen y cómo pedir la eliminación de tus datos.",
+    "Qué datos guarda Guardia Flow, cómo procesa los contenidos que analizas, qué terceros intervienen y cómo pedir la eliminación de tus datos.",
 };
 
 export default function PrivacyPage() {
@@ -23,7 +23,7 @@ export default function PrivacyPage() {
         },
         {
           heading: "Lo que jamás almacenamos",
-          body: "No almacenamos tus contraseñas de otros servicios ni el contenido de tus archivos después del análisis. La verificación de filtraciones usa el método k-anonimato de Have I Been Pwned: tu contraseña nunca sale completa de tu dispositivo. Además, CENTINELA nunca te pedirá credenciales de terceros para «protegerte»: si alguien lo hace, es una estafa.",
+          body: "No almacenamos tus contraseñas de otros servicios ni el contenido de tus archivos después del análisis. La verificación de filtraciones usa el método k-anonimato de Have I Been Pwned: tu contraseña nunca sale completa de tu dispositivo. Además, Guardia Flow nunca te pedirá credenciales de terceros para «protegerte»: si alguien lo hace, es una estafa.",
         },
         {
           heading: "Tu sesión",
@@ -35,11 +35,11 @@ export default function PrivacyPage() {
         },
         {
           heading: "Cookies y caché de la app",
-          body: "CENTINELA funciona como aplicación web progresiva (PWA): tu navegador puede guardar en caché recursos de la aplicación para que cargue rápido y pueda instalarse en tu pantalla de inicio. No usamos cookies de seguimiento ni publicidad de terceros.",
+          body: "Guardia Flow funciona como aplicación web progresiva (PWA): tu navegador puede guardar en caché recursos de la aplicación para que cargue rápido y pueda instalarse en tu pantalla de inicio. No usamos cookies de seguimiento ni publicidad de terceros.",
         },
         {
           heading: "Tus derechos y eliminación de datos",
-          body: "Puedes solicitar en cualquier momento una copia de tus datos o su eliminación definitiva escribiendo a hola@centinela.app desde tu correo de cuenta. También puedes eliminar tu historial de análisis desde tu panel. Trataremos las solicitudes conforme a la legislación de protección de datos aplicable.",
+          body: "Puedes solicitar en cualquier momento una copia de tus datos o su eliminación definitiva escribiendo a soporte@guardiaflow.com desde tu correo de cuenta. También puedes eliminar tu historial de análisis desde tu panel. Trataremos las solicitudes conforme a la legislación de protección de datos aplicable.",
         },
       ]}
     />

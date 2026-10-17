@@ -21,7 +21,7 @@ export default function LegalPage({ title, updated, sections }: LegalPageProps) 
           <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-cyan-500/30 bg-cyan-500/10">
             <Shield className="h-4 w-4 text-cyan-400" />
           </span>
-          Volver a CENTINELA
+          Volver a Guardia Flow
         </Link>
 
         <header className="mb-8">

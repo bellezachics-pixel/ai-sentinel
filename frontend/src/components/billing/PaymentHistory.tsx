@@ -102,7 +102,7 @@ export default function PaymentHistory() {
               >
                 <div className="min-w-0">
                   <p className="truncate text-xs font-medium text-white">
-                    {p.description || "Pago CENTINELA Pro"}
+                    {p.description || "Pago Guardia Flow Pro"}
                   </p>
                   <p className="text-[11px] text-slate-500">
                     {formatPlanDate(p.date) ?? p.date} ·{" "}

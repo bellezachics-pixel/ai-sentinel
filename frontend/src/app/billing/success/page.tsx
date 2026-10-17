@@ -73,7 +73,7 @@ function BillingSuccessContent() {
         {state === "confirmed" && (
           <>
             <h1 className="mt-5 text-xl font-bold text-white">
-              ¡Bienvenida a CENTINELA Pro!
+              ¡Bienvenida a Guardia Flow Pro!
             </h1>
             <p className="mt-2 text-sm leading-6 text-slate-400">
               Tu suscripción está activa. Ya puedes usar todas las herramientas
@@ -117,7 +117,7 @@ function BillingSuccessContent() {
               </Link>
             </div>
             <p className="mt-4 text-xs text-slate-600">
-              ¿Pasaron más de 15 minutos? Escríbenos a hola@centinela.app con tu
+              ¿Pasaron más de 15 minutos? Escríbenos a soporte@guardiaflow.com con tu
               correo de cuenta.
             </p>
           </>
@@ -128,7 +128,7 @@ function BillingSuccessContent() {
           className="mt-6 inline-flex items-center gap-2 text-xs text-slate-600 transition-colors hover:text-cyan-300"
         >
           <Shield className="h-3.5 w-3.5" />
-          Volver a centinela.app
+          Volver a guardiaflow.com
         </Link>
       </div>
     </main>

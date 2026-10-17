@@ -1,5 +1,5 @@
 """
-AI-Sentinel QRishing Analyzer Module
+Guardia Flow QRishing Analyzer Module
 
 Decodes QR codes from images, extracts and analyzes embedded URLs,
 detects URL shorteners and suspicious redirects within QR payloads.

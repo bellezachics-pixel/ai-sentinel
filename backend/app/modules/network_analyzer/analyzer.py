@@ -1,5 +1,5 @@
 """
-AI-Sentinel Network Analyzer Module
+Guardia Flow Network Analyzer Module
 
 Behavioral baseline modeling, TLS connection diagnostics (informational),
 proxy header detection, and network integrity monitoring (ARP spoofing

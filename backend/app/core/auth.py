@@ -1,5 +1,5 @@
 """
-Autenticacion JWT - AI-Sentinel
+Autenticacion JWT - Guardia Flow
 - Registro/Login de usuarios
 - Tokens JWT con expiracion
 - Hash seguro de passwords con bcrypt

@@ -1,4 +1,4 @@
-const CACHE_NAME = "ai-sentinel-pwa-v1";
+const CACHE_NAME = "guardiaflow-pwa-v1-gf1";
 const APP_SHELL = ["/", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 self.addEventListener("install", (event) => {

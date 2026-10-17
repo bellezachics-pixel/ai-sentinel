@@ -590,7 +590,7 @@ def test_payments_lista_cargos_mockeados_mas_recientes_primero(
                 "amount": 1600,
                 "currency": "usd",
                 "status": "succeeded",
-                "description": "CENTINELA Pro",
+                "description": "Guardia Flow Pro",
                 "created": 1700000000,
                 "receipt_url": "https://pay.stripe.com/receipt_viejo",
             },
@@ -599,7 +599,7 @@ def test_payments_lista_cargos_mockeados_mas_recientes_primero(
                 "amount": 1600,
                 "currency": "usd",
                 "status": "succeeded",
-                "description": "CENTINELA Pro",
+                "description": "Guardia Flow Pro",
                 "created": 1893456000,  # 2030-01-01
                 "receipt_url": "https://pay.stripe.com/receipt_nuevo",
             },

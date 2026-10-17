@@ -3,7 +3,7 @@ from typing import Optional, List
 
 
 class Settings(BaseSettings):
-    APP_NAME: str = "AI-Sentinel"
+    APP_NAME: str = "GUARDIA FLOW"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = True
 
@@ -67,7 +67,7 @@ class Settings(BaseSettings):
     # ============================================================
     # Stripe / Billing - SOLO modo TEST. Jamas usar claves live.
     # STRIPE_PRICE_ID es opcional: si esta vacio, el backend busca (o
-    # crea) el producto "CENTINELA Pro" (USD 16/mes recurrente) en el
+    # crea) el producto "Guardia Flow Pro" (USD 16/mes recurrente) en el
     # dashboard de Stripe TEST y registra el price ID en los logs.
     # ============================================================
     STRIPE_SECRET_KEY: str = ""

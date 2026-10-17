@@ -1,18 +1,77 @@
+# ============================================================
+# GUARDIA FLOW — Render Blueprint (producción)
+# Rebrand desde la marca anterior · Fecha: 2026-10-17
+#
+# Uso:
+#   - Producción: se aplica desde el dashboard de Render (New → Blueprint)
+#     o se sincroniza sobre los servicios existentes. Los servicios de
+#     producción deben estar en plan Starter ($7/mes c/u) y el backend
+#     requiere el disco persistente (solo disponible en instancias pagas).
+#   - Staging: NO uses este blueprint para crear los servicios gratis;
+#     créalos a mano en el dashboard (ver DESPLIEGUE-GUARDIA-FLOW.md, sección A).
+#
+# Dominios de producción:
+#   - Frontend: https://guardiaflow.com y https://www.guardiaflow.com
+#   - Backend:  https://api.guardiaflow.com
+#   (Vercel solo se usa para previews/staging: plan Hobby no permite uso comercial.)
+# ============================================================
+
 services:
+  # ----------------------------------------------------------
+  # BACKEND — FastAPI (usuarios, análisis, billing Stripe TEST)
+  # ----------------------------------------------------------
   - type: web
-    name: ai-sentinel-backend
+    name: guardiaflow-backend
     runtime: python
     region: oregon
     rootDir: backend
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1
+    healthCheckPath: /api/v1/health
+    # El worker único (--workers 1) es OBLIGATORIO: el rate limiting es en
+    # memoria y los JSON de usuarios/historial viven en el disco montado;
+    # varios workers romperían ambos.
+    # IMPORTANTE: en el dashboard, cambia el instance type a Starter ($7/mes)
+    # y adjunta el disco ANTES de considerar esto producción (el disco
+    # persistente no está disponible en instancias gratis).
+    disk:
+      name: guardiaflow-data
+      # user_store.py resuelve DATA_DIR relativo a la carpeta backend
+      # (backend/data). Con rootDir: backend el código vive en /app/backend.
+      mountPath: /app/backend/data
+      sizeGB: 1
     envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.0"
+      - key: ENVIRONMENT
+        value: production
       - key: DEBUG
         value: false
       - key: SECRET_KEY
-        generateValue: true
+        generateValue: true   # Render genera un secreto aleatorio fuerte al crear
+      - key: FRONTEND_URL
+        value: https://guardiaflow.com
       - key: REQUIRE_AUTH_FOR_ANALYSIS
-        value: false
+        value: true
+      # --- Staging: el frontend de staging apunta a este backend mediante
+      # --- la URL propia del servicio staging (onrender.com); en producción
+      # --- se agregan los dominios mediante ALLOWED_ORIGINS en el dashboard.
+      - key: ALLOWED_ORIGINS
+        value: "https://guardiaflow.com,https://www.guardiaflow.com,https://guardiaflow-staging-frontend.onrender.com"
+        sync: false
+      # Stripe MODO TEST únicamente. Jamás claves live. sync:false para que
+      # el dashboard (donde Gabiotita pega las claves) no se pise al sincronizar.
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_PRICE_ID
+        sync: false
+      - key: ADMIN_EMAILS
+        sync: false           # producción: soporte@guardiaflow.com
+      - key: ADMIN_PASSWORD
+        sync: false
+      # Proveedores externos (opcionales; la app funciona sin ellas).
       - key: OPENAI_API_KEY
         sync: false
       - key: VIRUSTOTAL_API_KEY
@@ -23,15 +82,40 @@ services:
         sync: false
       - key: GOOGLE_OAUTH_CLIENT_SECRET
         sync: false
+      # Producción: https://api.guardiaflow.com/api/v1/auth/google/callback
       - key: GOOGLE_OAUTH_REDIRECT_URI
+        value: https://api.guardiaflow.com/api/v1/auth/google/callback
         sync: false
-      - key: FRONTEND_URL
-        value: https://frontend-kappa-wheat-28.vercel.app
       - key: NUMVERIFY_API_KEY
         sync: false
       - key: TWILIO_ACCOUNT_SID
         sync: false
       - key: TWILIO_AUTH_TOKEN
         sync: false
-      - key: PYTHON_VERSION
-        value: "3.11.0"
+
+  # ----------------------------------------------------------
+  # FRONTEND — Next.js
+  # ----------------------------------------------------------
+  - type: web
+    name: guardiaflow-frontend
+    runtime: node
+    region: oregon
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    startCommand: npm run start -- -p $PORT
+    # En el dashboard: cambiar instance type a Starter ($7/mes) para producción.
+    envVars:
+      - key: NEXT_PUBLIC_SITE_URL
+        value: https://guardiaflow.com
+      # Producción: https://api.guardiaflow.com
+      # Staging: dejar en el dashboard la URL del backend staging, p.ej.
+      # https://guardiaflow-staging-backend.onrender.com (sync:false evita
+      # que el blueprint la sobrescriba).
+      - key: NEXT_PUBLIC_API_URL
+        value: https://api.guardiaflow.com
+        sync: false
+      # Solo para staging: contraseña del gate de acceso (middleware). En
+      # producción se deja VACÍA (la app es pública). Gabiotita la escribe
+      # directo en el dashboard de Render; nunca en el chat ni en el repo.
+      - key: STAGING_PASSWORD
+        sync: false
