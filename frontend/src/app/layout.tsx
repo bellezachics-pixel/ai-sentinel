@@ -3,9 +3,9 @@ import ServiceWorkerRegister from "@/components/pwa/ServiceWorkerRegister";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AI-Sentinel | Ciberseguridad Inteligente",
+  title: "CENTINELA — Protección Digital",
   description:
-    "Plataforma de ciberseguridad impulsada por IA para detección de amenazas, análisis de URLs, correos, QR, deepfakes y monitoreo de red.",
+    "Protección digital impulsada por inteligencia artificial: análisis de enlaces, correos, archivos y medios para detectar amenazas antes de que te afecten.",
   keywords: [
     "ciberseguridad",
     "AI",
@@ -14,12 +14,12 @@ export const metadata: Metadata = {
     "deepfake",
     "network security",
   ],
-  applicationName: "AI Sentinel",
+  applicationName: "CENTINELA",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "AI Sentinel",
+    title: "CENTINELA",
   },
   icons: {
     icon: [

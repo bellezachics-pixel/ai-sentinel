@@ -13,17 +13,22 @@ from app.core.security import (
 
 logger = logging.getLogger(__name__)
 
+# Placeholder value that must never be used as a real secret
+PLACEHOLDER_SECRET = "cambia-esto-por-un-string-aleatorio-de-32-chars"
+
+is_production = os.environ.get("ENVIRONMENT", "development").lower() == "production"
+
 # Validate/generate JWT secret
-if not settings.SECRET_KEY:
-    if os.environ.get("ENVIRONMENT", "development").lower() == "production":
-        raise RuntimeError("SECRET_KEY environment variable is required in production")
+if not settings.SECRET_KEY or settings.SECRET_KEY == PLACEHOLDER_SECRET:
+    if is_production:
+        raise RuntimeError(
+            "SECRET_KEY environment variable is required in production "
+            "and must not be the placeholder value"
+        )
     # Generate a random secret for development (tokens won't survive restarts)
     generated_secret = secrets.token_urlsafe(32)
     object.__setattr__(settings, "SECRET_KEY", generated_secret)
-    logger.warning("SECRET_KEY not set. Generated a random key for this session. JWT tokens will not survive restarts.")
-
-# Hide docs in production
-is_production = os.environ.get("ENVIRONMENT", "development").lower() == "production"
+    logger.warning("SECRET_KEY not set (or is the documented placeholder). Generated a random key for this session. JWT tokens will not survive restarts.")
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -62,9 +67,11 @@ app.add_middleware(
 # ============================================================
 from app.api.routes.auth import router as auth_router
 from app.api.routes.analysis import router as analysis_router
+from app.api.routes.billing import router as billing_router
 
 app.include_router(auth_router)
 app.include_router(analysis_router)
+app.include_router(billing_router)
 
 
 @app.get("/")

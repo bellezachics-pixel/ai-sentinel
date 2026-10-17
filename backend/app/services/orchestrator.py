@@ -19,6 +19,7 @@ from app.models.schemas import (
 )
 from app.core.config import settings
 from app.core.url_safety import normalize_public_http_url
+from app.core import history_store
 from app.services.risk_engine import risk_engine
 
 
@@ -33,7 +34,36 @@ class AnalysisOrchestrator:
         self._deepfake_analyzer = None
         self._ocr_nlp_analyzer = None
         self._identity_client = None
-        self._analysis_history: list[AnalysisResult] = []
+
+    def _record(self, result: "AnalysisResult", user_id: str | None):
+        """Persist a completed analysis into the calling user's history.
+
+        Unauthenticated requests are skipped: no anonymous bucket, so the
+        store only ever contains data tied to a real account.
+        """
+        if not user_id:
+            return
+        history_store.add_entry(user_id, self._build_history_entry(result))
+
+    @staticmethod
+    def _build_history_entry(result: "AnalysisResult") -> dict:
+        dump = result.model_dump(mode="json")
+        metadata = {
+            k: v
+            for k, v in (dump.get("metadata") or {}).items()
+            if k not in history_store.BULKY_METADATA_KEYS
+        }
+        return {
+            "id": dump.get("id", ""),
+            "analysis_type": dump.get("analysis_type"),
+            "target": str(dump.get("target", ""))[: history_store.MAX_TARGET_LENGTH],
+            "timestamp": dump.get("timestamp"),
+            "risk_score": dump.get("risk_score", {}),
+            "findings": dump.get("findings", []),
+            "threat_intel": dump.get("threat_intel", []),
+            "recommendations": dump.get("recommendations", []),
+            "metadata": metadata,
+        }
 
     @property
     def url_analyzer(self):
@@ -98,7 +128,7 @@ class AnalysisOrchestrator:
             self._identity_client = HIBPClient()
         return self._identity_client
 
-    async def analyze_url(self, url: str, deep_scan: bool = False) -> AnalysisResult:
+    async def analyze_url(self, url: str, deep_scan: bool = False, user_id: str | None = None) -> AnalysisResult:
         analysis_id = str(uuid.uuid4())[:8]
         safe_url, safety_finding = normalize_public_http_url(url)
 
@@ -190,10 +220,10 @@ class AnalysisOrchestrator:
             },
         )
 
-        self._analysis_history.append(result)
+        self._record(result, user_id)
         return result
 
-    async def analyze_email(self, subject: str, sender: str, body: str, headers: dict | None = None) -> AnalysisResult:
+    async def analyze_email(self, subject: str, sender: str, body: str, headers: dict | None = None, user_id: str | None = None) -> AnalysisResult:
         analysis_id = str(uuid.uuid4())[:8]
 
         # NLP analysis for social engineering
@@ -240,10 +270,10 @@ class AnalysisOrchestrator:
             metadata={"subject": subject, "sender": sender},
         )
 
-        self._analysis_history.append(result)
+        self._record(result, user_id)
         return result
 
-    async def analyze_message(self, platform: str, body: str) -> AnalysisResult:
+    async def analyze_message(self, platform: str, body: str, user_id: str | None = None) -> AnalysisResult:
         analysis_id = str(uuid.uuid4())[:8]
         platform = (platform or "message").strip().lower()
 
@@ -290,10 +320,10 @@ class AnalysisOrchestrator:
             },
         )
 
-        self._analysis_history.append(result)
+        self._record(result, user_id)
         return result
 
-    async def analyze_qr(self, image_data: bytes) -> AnalysisResult:
+    async def analyze_qr(self, image_data: bytes, user_id: str | None = None) -> AnalysisResult:
         analysis_id = str(uuid.uuid4())[:8]
 
         qr_result = await self.qrishing_analyzer.analyze_qr(image_data)
@@ -319,10 +349,10 @@ class AnalysisOrchestrator:
             metadata=qr_result.get("metadata", {}),
         )
 
-        self._analysis_history.append(result)
+        self._record(result, user_id)
         return result
 
-    async def analyze_media(self, file_data: bytes, media_type: str) -> AnalysisResult:
+    async def analyze_media(self, file_data: bytes, media_type: str, user_id: str | None = None) -> AnalysisResult:
         analysis_id = str(uuid.uuid4())[:8]
 
         deepfake_result = await self.deepfake_analyzer.analyze_media(file_data, media_type)
@@ -348,7 +378,7 @@ class AnalysisOrchestrator:
             metadata=deepfake_result.get("metadata", {}),
         )
 
-        self._analysis_history.append(result)
+        self._record(result, user_id)
         return result
 
     async def analyze_file(
@@ -356,6 +386,7 @@ class AnalysisOrchestrator:
         file_data: bytes,
         filename: str,
         content_type: str,
+        user_id: str | None = None,
     ) -> AnalysisResult:
         analysis_id = str(uuid.uuid4())[:8]
         filename = filename or "archivo_desconocido"
@@ -397,10 +428,10 @@ class AnalysisOrchestrator:
             },
         )
 
-        self._analysis_history.append(result)
+        self._record(result, user_id)
         return result
 
-    async def check_network(self, target: str | None = None) -> AnalysisResult:
+    async def check_network(self, target: str | None = None, user_id: str | None = None) -> AnalysisResult:
         analysis_id = str(uuid.uuid4())[:8]
         target = target or "8.8.8.8"
 
@@ -427,10 +458,10 @@ class AnalysisOrchestrator:
             metadata=network_result.get("metadata", {}),
         )
 
-        self._analysis_history.append(result)
+        self._record(result, user_id)
         return result
 
-    async def check_identity(self, value: str, check_type: str = "email") -> AnalysisResult:
+    async def check_identity(self, value: str, check_type: str = "email", user_id: str | None = None) -> AnalysisResult:
         analysis_id = str(uuid.uuid4())[:8]
 
         if check_type == "email":
@@ -449,41 +480,7 @@ class AnalysisOrchestrator:
         breaches = hibp_result.get("breaches", [])
 
         findings = []
-        if check_type == "phone":
-            provider = hibp_result.get("provider", "phone")
-            valid = hibp_result.get("valid")
-            if error:
-                findings.append({
-                    "type": "phone_lookup_error",
-                    "severity": "medium",
-                    "description": error,
-                    "source": provider,
-                })
-            elif valid is False:
-                findings.append({
-                    "type": "invalid_phone",
-                    "severity": "medium",
-                    "description": hibp_result.get("message", "El numero no parece valido."),
-                    "source": provider,
-                    "details": hibp_result,
-                })
-            else:
-                details = [
-                    f"Pais: {hibp_result.get('country', 'N/A')}",
-                    f"Operador: {hibp_result.get('carrier', 'N/A')}",
-                    f"Tipo: {hibp_result.get('line_type', 'N/A')}",
-                ]
-                caller_name = hibp_result.get("caller_name")
-                if caller_name and caller_name != "N/A":
-                    details.append(f"Nombre registrado: {caller_name}")
-                findings.append({
-                    "type": "phone_verified",
-                    "severity": "low",
-                    "description": "Telefono verificado. " + " | ".join(details),
-                    "source": provider,
-                    "details": hibp_result,
-                })
-        elif error:
+        if error:
             findings.append({
                 "type": "identity_check_error",
                 "severity": "medium",
@@ -518,12 +515,6 @@ class AnalysisOrchestrator:
                 "Activa la autenticación de dos factores (2FA).",
                 "No reutilices contraseñas entre servicios.",
             ])
-        if check_type == "phone":
-            recommendations.extend([
-                "No compartas codigos SMS ni enlaces recibidos por llamadas o mensajes.",
-                "Activa bloqueo de SIM/PIN con tu operador si sospechas fraude.",
-                "Verifica llamadas sospechosas por un canal oficial antes de pagar o entregar datos.",
-            ])
 
         result = AnalysisResult(
             id=analysis_id,
@@ -536,12 +527,11 @@ class AnalysisOrchestrator:
             metadata={
                 "check_type": check_type,
                 "hibp_result": hibp_result,
-                "phone_result": hibp_result if check_type == "phone" else None,
                 "breaches": breaches,
             },
         )
 
-        self._analysis_history.append(result)
+        self._record(result, user_id)
         return result
 
     @staticmethod
@@ -655,14 +645,19 @@ class AnalysisOrchestrator:
 
         return findings, score
 
-    async def get_dashboard_stats(self) -> dict:
-        total = len(self._analysis_history)
-        threats = sum(1 for a in self._analysis_history if a.risk_score.level in ("high", "critical"))
-        distribution = {"low": 0, "medium": 0, "high": 0, "critical": 0}
-        for a in self._analysis_history:
-            distribution[a.risk_score.level.value] += 1
-
-        recent = sorted(self._analysis_history, key=lambda x: x.timestamp, reverse=True)[:10]
+    async def get_dashboard_stats(self, user_id: str | None = None) -> dict:
+        if user_id:
+            stats = history_store.get_stats(user_id)
+        else:
+            # Unauthenticated callers see an empty dashboard; their scans
+            # were not recorded (no anonymous bucket).
+            stats = {
+                "total_scans": 0,
+                "threats_detected": 0,
+                "average_risk": 0.0,
+                "risk_distribution": {"low": 0, "medium": 0, "high": 0, "critical": 0},
+                "recent_analyses": [],
+            }
 
         # Network status check
         try:
@@ -672,11 +667,12 @@ class AnalysisOrchestrator:
             network_secure = True
 
         return {
-            "total_scans": total,
-            "threats_detected": threats,
+            "total_scans": stats["total_scans"],
+            "threats_detected": stats["threats_detected"],
             "active_monitors": 3,
-            "risk_distribution": distribution,
-            "recent_analyses": [r.model_dump() for r in recent],
+            "average_risk": stats["average_risk"],
+            "risk_distribution": stats["risk_distribution"],
+            "recent_analyses": stats["recent_analyses"],
             "network_status": {
                 "is_secure": network_secure,
                 "risk_indicators": [],

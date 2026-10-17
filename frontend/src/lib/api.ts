@@ -1,32 +1,9 @@
 const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL || "https://ai-sentinel-31so.onrender.com";
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 const TOKEN_KEY = "ai_sentinel_access_token";
 const REFRESH_TOKEN_KEY = "ai_sentinel_refresh_token";
 const LEGACY_TOKEN_KEY = "ai_sentinel_token";
-const REQUEST_TIMEOUT_MS = 20000;
-
-export class ApiError extends Error {
-  status: number;
-  detail?: unknown;
-
-  constructor(status: number, statusText: string, detail?: unknown) {
-    const message =
-      typeof detail === "string"
-        ? detail
-        : Array.isArray(detail)
-          ? detail
-              .map((item) =>
-                typeof item?.msg === "string" ? item.msg : JSON.stringify(item)
-              )
-              .join(" ")
-          : `API Error: ${status} ${statusText}`;
-    super(message);
-    this.name = "ApiError";
-    this.status = status;
-    this.detail = detail;
-  }
-}
 
 export function getAccessToken() {
   if (typeof window === "undefined") return null;
@@ -141,76 +118,190 @@ export interface UserProfile {
   created_at: string;
 }
 
-async function apiFetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
+export type BillingStatusValue =
+  | "trialing"
+  | "active"
+  | "past_due"
+  | "canceled"
+  | "incomplete"
+  | "none";
+
+export interface BillingStatus {
+  has_access: boolean;
+  status: BillingStatusValue;
+  trial_end: string | null;
+  current_period_end: string | null;
+  cancel_at_period_end: boolean;
+  plan_price: "US$16/mes";
+}
+
+export interface CheckoutResponse {
+  checkout_url: string;
+}
+
+export interface PortalResponse {
+  portal_url: string;
+}
+
+/**
+ * Crea una sesión de Stripe Checkout para suscribirse a CENTINELA Pro.
+ * 409 si ya hay una suscripción activa; 503 si la pasarela de pagos no está configurada.
+ */
+export function createCheckout(): Promise<CheckoutResponse> {
+  return apiFetch<CheckoutResponse>("/api/v1/billing/checkout", {
+    method: "POST",
+  });
+}
+
+/**
+ * Abre el portal de facturación de Stripe (actualizar método de pago,
+ * ver facturas, cancelar suscripción).
+ * 404 si la cuenta no tiene registro de facturación.
+ */
+export function openPortal(): Promise<PortalResponse> {
+  return apiFetch<PortalResponse>("/api/v1/billing/portal", {
+    method: "POST",
+  });
+}
+
+/** Estado del plan y acceso del usuario autenticado. */
+export function getBillingStatus(): Promise<BillingStatus> {
+  return apiFetch<BillingStatus>("/api/v1/billing/status");
+}
+
+export interface PaymentItem {
+  id: string;
+  amount: number;
+  currency: string;
+  status: string;
+  description: string | null;
+  date: string;
+  receipt_url: string | null;
+}
+
+export interface PaymentsResponse {
+  payments: PaymentItem[];
+}
+
+/**
+ * Historial de pagos (cargos Stripe del cliente, más reciente primero).
+ * 503 si la pasarela de pagos no está configurada.
+ */
+export function getPayments(): Promise<PaymentsResponse> {
+  return apiFetch<PaymentsResponse>("/api/v1/billing/payments");
+}
+
+let refreshInFlight: Promise<string | null> | null = null;
+
+export function refreshToken(): Promise<string | null> {
+  if (!refreshInFlight) {
+    refreshInFlight = doRefresh().finally(() => {
+      refreshInFlight = null;
+    });
+  }
+  return refreshInFlight;
+}
+
+async function doRefresh(): Promise<string | null> {
+  if (typeof window === "undefined") return null;
+  const refresh = window.localStorage.getItem(REFRESH_TOKEN_KEY);
+  if (!refresh) return null;
+
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refresh }),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as Partial<TokenResponse>;
+    if (!data.access_token) return null;
+    setAuthTokens(data.access_token, data.refresh_token);
+    return data.access_token;
+  } catch {
+    return null;
+  }
+}
+
+function handleSessionExpired() {
+  clearAuthTokens();
+  if (typeof window === "undefined") return;
+  if (window.location.pathname !== "/app") {
+    window.location.assign("/app");
+  } else {
+    window.location.reload();
+  }
+}
+
+async function parseErrorMessage(res: Response): Promise<string> {
+  const fallback = `API Error: ${res.status} ${res.statusText}`;
+  try {
+    const body: unknown = await res.json();
+    if (body && typeof body === "object") {
+      const { detail, message } = body as { detail?: unknown; message?: unknown };
+      const raw = detail ?? message;
+      if (typeof raw === "string") return raw;
+      if (Array.isArray(raw)) {
+        const parts = raw.map((d) =>
+          typeof d === "object" && d !== null && "msg" in d
+            ? String((d as { msg: unknown }).msg)
+            : String(d)
+        );
+        if (parts.length > 0) return parts.join(", ");
+      }
+    }
+  } catch {
+    // Body was not JSON; keep fallback.
+  }
+  return fallback;
+}
+
+async function apiFetch<T>(
+  endpoint: string,
+  options?: RequestInit,
+  retriedAfterRefresh = false
+): Promise<T> {
   const token = getAccessToken();
-  const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...((options?.headers as Record<string, string> | undefined) || {}),
   };
 
-  try {
-    const res = await fetch(`${API_BASE}${endpoint}`, {
-      ...options,
-      headers,
-      signal: options?.signal || controller.signal,
-    });
+  const res = await fetch(`${API_BASE}${endpoint}`, {
+    ...options,
+    headers,
+  });
 
-    if (!res.ok) {
-      let detail: unknown;
-      try {
-        detail = (await res.json()).detail;
-      } catch {
-        detail = undefined;
-      }
-      throw new ApiError(res.status, res.statusText, detail);
+  if (res.status === 401 && !retriedAfterRefresh) {
+    const newToken = await refreshToken();
+    if (newToken) {
+      return apiFetch<T>(endpoint, options, true);
     }
-
-    return res.json();
-  } catch (error) {
-    if (error instanceof DOMException && error.name === "AbortError") {
-      throw new Error("La solicitud tardo demasiado. Intenta de nuevo.");
-    }
-    throw error;
-  } finally {
-    window.clearTimeout(timeout);
+    handleSessionExpired();
+    throw new Error("Sesión expirada. Inicia sesión de nuevo.");
   }
+
+  if (!res.ok) {
+    throw new Error(await parseErrorMessage(res));
+  }
+
+  return res.json();
 }
 
 async function apiFormData(endpoint: string, formData: FormData) {
   const token = getAccessToken();
-  const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const res = await fetch(`${API_BASE}${endpoint}`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    body: formData,
+  });
 
-  try {
-    const res = await fetch(`${API_BASE}${endpoint}`, {
-      method: "POST",
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      body: formData,
-      signal: controller.signal,
-    });
-
-    if (!res.ok) {
-      let detail: unknown;
-      try {
-        detail = (await res.json()).detail;
-      } catch {
-        detail = undefined;
-      }
-      throw new ApiError(res.status, res.statusText, detail);
-    }
-
-    return res.json() as Promise<AnalysisResult>;
-  } catch (error) {
-    if (error instanceof DOMException && error.name === "AbortError") {
-      throw new Error("La solicitud tardo demasiado. Intenta de nuevo.");
-    }
-    throw error;
-  } finally {
-    window.clearTimeout(timeout);
+  if (!res.ok) {
+    throw new Error(await parseErrorMessage(res));
   }
+
+  return res.json() as Promise<AnalysisResult>;
 }
 
 type LoginInput = { username: string; password: string } | string;
@@ -250,11 +341,6 @@ export const api = {
   getMe: () => apiFetch<UserProfile>("/api/v1/auth/me"),
 
   getGoogleLoginUrl: () => `${API_BASE}/api/v1/auth/google/login`,
-
-  me: () =>
-    apiFetch<{ username: string; email: string; is_admin: boolean }>(
-      "/api/v1/auth/me"
-    ),
 
   logout: () =>
     apiFetch<{ detail: string }>("/api/v1/auth/logout", {

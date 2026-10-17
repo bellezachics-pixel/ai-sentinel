@@ -127,6 +127,13 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 # ============================================================
 class RateLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
+        # El webhook de Stripe llega en rafagas (eventos de suscripcion,
+        # reintentos de entrega) y desde IPs rotatorias de Stripe: limitarlo
+        # con la IP del cliente romperia la entrega de eventos. La seguridad
+        # la aporta la verificacion de firma (Stripe-Signature) en la ruta.
+        if request.url.path == "/api/v1/billing/webhook":
+            return await call_next(request)
+
         client_ip = self._get_client_ip(request)
 
         # Check if IP is blocked
@@ -193,7 +200,9 @@ MALICIOUS_PATTERNS = [
     re.compile(r"\\x00"),
 ]
 
-MAX_REQUEST_SIZE = 10 * 1024 * 1024  # 10MB
+# Global ceiling for request bodies. Per-endpoint upload limits are stricter
+# (see app.core.upload_guard): QR 5 MB, media/file 20 MB.
+MAX_REQUEST_SIZE = 25 * 1024 * 1024  # 25MB
 
 
 class RequestValidationMiddleware(BaseHTTPMiddleware):
@@ -203,7 +212,7 @@ class RequestValidationMiddleware(BaseHTTPMiddleware):
         if content_length and int(content_length) > MAX_REQUEST_SIZE:
             return JSONResponse(
                 status_code=413,
-                content={"detail": "Solicitud demasiado grande. Maximo 10MB."},
+                content={"detail": "Solicitud demasiado grande. Maximo 25MB."},
             )
 
         # Check URL for malicious patterns

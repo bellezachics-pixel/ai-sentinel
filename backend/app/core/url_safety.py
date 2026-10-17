@@ -64,6 +64,94 @@ def normalize_public_http_url(raw_url: str) -> tuple[str | None, dict | None]:
     return url, None
 
 
+def validate_public_network_target(target: str) -> str:
+    """
+    Validate that a network-scan target is safe to connect to (SSRF guard).
+
+    Accepts a hostname, IP address, or http(s) URL. Raises ValueError if the
+    target is private, loopback, link-local (incl. cloud metadata
+    169.254.169.254), reserved, multicast, unspecified, or resolves to any
+    such address. Returns the normalized hostname/IP on success.
+    """
+    raw = (target or "").strip()
+    if not raw:
+        raise ValueError("Objetivo de red requerido")
+
+    if "://" in raw:
+        parsed = urlparse(raw)
+        host = parsed.hostname
+    else:
+        # Strip any path and port (IPv6 literals in brackets handled below)
+        host = raw.split("/", 1)[0]
+        if host.startswith("[") and "]" in host:
+            host = host[1:host.index("]")]
+        elif ":" in host:
+            host = host.rsplit(":", 1)[0]
+
+    host = (host or "").strip().lower()
+    if not host:
+        raise ValueError("Objetivo de red invalido")
+
+    if host in {"localhost", "localhost.localdomain"}:
+        raise ValueError(
+            "Se bloqueo el acceso a localhost para prevenir SSRF."
+        )
+
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        ip = None
+
+    if ip is not None:
+        _reject_non_public_ip(ip)
+        return host
+
+    # Hostname: resolve and verify every resolved address is public
+    try:
+        addresses = {
+            result[4][0]
+            for result in socket.getaddrinfo(host, None, type=socket.SOCK_STREAM)
+        }
+    except socket.gaierror:
+        raise ValueError(f"No se pudo resolver el objetivo: {host}")
+
+    if not addresses:
+        raise ValueError(f"No se pudo resolver el objetivo: {host}")
+
+    for address in addresses:
+        try:
+            resolved = ipaddress.ip_address(address)
+        except ValueError:
+            raise ValueError(f"DNS devolvio una IP invalida: {address}")
+        _reject_non_public_ip(resolved)
+
+    return host
+
+
+# Cloud metadata + CGNAT ranges not covered by is_private on all Python versions
+_EXTRA_BLOCKED_NETWORKS = [
+    ipaddress.ip_network("169.254.0.0/16"),   # link-local / cloud metadata
+    ipaddress.ip_network("100.64.0.0/10"),    # CGNAT (RFC 6598)
+]
+
+
+def _reject_non_public_ip(ip: ipaddress.IPv4Address | ipaddress.IPv6Address):
+    blocked = (
+        ip.is_private
+        or ip.is_loopback
+        or ip.is_link_local
+        or ip.is_multicast
+        or ip.is_reserved
+        or ip.is_unspecified
+        or any(ip in net for net in _EXTRA_BLOCKED_NETWORKS)
+    )
+    if blocked:
+        raise ValueError(
+            f"Se bloqueo la conexion a {ip} (direccion privada, reservada "
+            f"o de metadatos) para prevenir SSRF."
+        )
+
+
 def _finding(finding_type: str, description: str, severity: str = "high") -> dict:
     return {
         "type": finding_type,

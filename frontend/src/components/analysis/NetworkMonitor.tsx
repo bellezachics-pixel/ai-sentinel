@@ -65,6 +65,14 @@ export default function NetworkMonitor() {
         <p className="text-sm text-slate-500 mt-0.5">
           Verifica la integridad de tu conexión de red y detecta anomalías
         </p>
+        <div className="mt-3 rounded-lg border border-[#1e293b] bg-[#111827] p-3">
+          <p className="text-xs text-slate-500">
+            El análisis de red se ejecuta desde nuestros servidores y verifica
+            el destino indicado (TCP, TLS, HTTPS y DNS). La detección de
+            interceptación local (ARP/DNS en tu red) requiere el agente local
+            opcional y no está disponible en la versión web.
+          </p>
+        </div>
       </div>
 
       {/* Input */}
@@ -77,7 +85,7 @@ export default function NetworkMonitor() {
               value={targetIp}
               onChange={(e) => setTargetIp(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleCheck()}
-              placeholder="IP objetivo (opcional, ej: 192.168.1.1)"
+              placeholder="Destino público (opcional, ej: 8.8.8.8 o ejemplo.com)"
               className="w-full h-11 pl-10 pr-4 rounded-lg bg-[#0a0e1a] border border-[#1e293b] text-sm text-slate-300 placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-colors text-mono"
             />
           </div>
@@ -107,7 +115,7 @@ export default function NetworkMonitor() {
           <div className="text-center">
             <p className="text-sm text-slate-300">Analizando red...</p>
             <p className="text-xs text-slate-500 mt-1">
-              Verificando TLS, DNS, ARP y conectividad
+              Verificando TCP, TLS, HTTPS y DNS del destino desde nuestros servidores
             </p>
           </div>
         </div>

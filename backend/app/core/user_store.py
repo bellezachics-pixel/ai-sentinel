@@ -12,7 +12,14 @@ from typing import Optional
 
 from app.core.config import settings
 
-DATA_DIR = Path(os.environ.get("DATA_DIR", "."))
+# Resolve DATA_DIR relative to the backend directory (not the CWD) unless an
+# explicit DATA_DIR env var is provided, so the store is stable no matter
+# where the process is launched from.
+_BACKEND_DIR = Path(__file__).resolve().parents[2]
+DATA_DIR = Path(
+    os.environ.get("DATA_DIR") or (_BACKEND_DIR / "data")
+).resolve()
+DATA_DIR.mkdir(parents=True, exist_ok=True)
 USERS_FILE = DATA_DIR / "users.json"
 BLACKLIST_FILE = DATA_DIR / "token_blacklist.json"
 

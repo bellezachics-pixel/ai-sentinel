@@ -1,30 +1,45 @@
+import type { Metadata } from "next";
 import LegalPage from "@/components/legal/LegalPage";
+
+export const metadata: Metadata = {
+  title: "Privacidad — CENTINELA",
+  description:
+    "Qué datos guarda CENTINELA, cómo procesa los contenidos que analizas, qué terceros intervienen y cómo pedir la eliminación de tus datos.",
+};
 
 export default function PrivacyPage() {
   return (
     <LegalPage
       title="Privacidad"
-      updated="3 de julio de 2026"
+      updated="17 de octubre de 2026"
       sections={[
         {
-          heading: "Datos de cuenta",
-          body: "AI Sentinel usa tu cuenta para darte acceso al panel, mantener tu sesion y asociar actividad basica de uso. Si entras con Google, recibimos el email verificado necesario para crear tu cuenta.",
+          heading: "Qué datos guardamos",
+          body: "Guardamos los datos mínimos necesarios para operar el servicio: tu correo electrónico de cuenta, tu contraseña (almacenada únicamente como hash, nunca en texto plano), la fecha de registro y un historial de los análisis que realizas (tipo de análisis e indicador analizado, por ejemplo la URL o el asunto de un correo) para mostrarte tu panel y recomendaciones.",
         },
         {
-          heading: "Contenido analizado",
-          body: "Los textos, URLs, archivos o mensajes que envias se procesan para generar analisis de riesgo y recomendaciones. Evita subir secretos, contrasenas, documentos legales sensibles o informacion personal que no sea necesaria para el analisis.",
+          heading: "Contenido que analizas",
+          body: "Los enlaces, textos, archivos o imágenes que envías se procesan para producir el resultado de análisis. El contenido no se conserva como parte de tu historial una vez entregado el resultado, salvo registros operativos temporales del sistema y salvo que tú guardes un informe en tu panel. Evita enviar información innecesariamente sensible: analiza el indicador concreto (la URL, el texto del mensaje), no documentos completos con datos de terceros.",
         },
         {
-          heading: "Proveedores externos",
-          body: "Algunas funciones pueden usar servicios externos como OpenAI, VirusTotal, Google Fact Check, Numverify o Twilio cuando sus API keys esten configuradas. Cada proveedor puede procesar datos conforme a sus propias politicas.",
+          heading: "Lo que jamás almacenamos",
+          body: "No almacenamos tus contraseñas de otros servicios ni el contenido de tus archivos después del análisis. La verificación de filtraciones usa el método k-anonimato de Have I Been Pwned: tu contraseña nunca sale completa de tu dispositivo. Además, CENTINELA nunca te pedirá credenciales de terceros para «protegerte»: si alguien lo hace, es una estafa.",
         },
         {
-          heading: "Seguridad",
-          body: "La app aplica autenticacion, controles de CORS y protecciones basicas contra abuso. Ningun sistema es infalible, por lo que los resultados deben tratarse como apoyo para tomar decisiones, no como garantia absoluta.",
+          heading: "Tu sesión",
+          body: "Al iniciar sesión, tu navegador guarda un token de acceso en el almacenamiento local (localStorage) para mantener tu sesión activa sin pedirte la contraseña en cada visita. Cierra sesión en dispositivos compartidos y mantén tu navegador actualizado.",
         },
         {
-          heading: "Contacto",
-          body: "Para solicitar correcciones, eliminacion de datos o soporte, usa el canal comercial o de soporte definido para tu instalacion de AI Sentinel.",
+          heading: "Terceros",
+          body: "Los pagos se procesan a través de Stripe, que recibe los datos necesarios para cobrar tu suscripción conforme a su propia política de privacidad. Las consultas de inteligencia de amenazas (VirusTotal, urlscan, AbuseIPDB, cuando están configuradas) envían a esos proveedores únicamente el indicador que estás buscando (por ejemplo, la URL o la dirección IP concreta). El asistente de IA puede procesar tus preguntas con un proveedor de modelos de lenguaje configurado por el operador del servicio.",
+        },
+        {
+          heading: "Cookies y caché de la app",
+          body: "CENTINELA funciona como aplicación web progresiva (PWA): tu navegador puede guardar en caché recursos de la aplicación para que cargue rápido y pueda instalarse en tu pantalla de inicio. No usamos cookies de seguimiento ni publicidad de terceros.",
+        },
+        {
+          heading: "Tus derechos y eliminación de datos",
+          body: "Puedes solicitar en cualquier momento una copia de tus datos o su eliminación definitiva escribiendo a hola@centinela.app desde tu correo de cuenta. También puedes eliminar tu historial de análisis desde tu panel. Trataremos las solicitudes conforme a la legislación de protección de datos aplicable.",
         },
       ]}
     />

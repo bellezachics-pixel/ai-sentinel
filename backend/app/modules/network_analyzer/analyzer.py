@@ -1,9 +1,15 @@
 """
 AI-Sentinel Network Analyzer Module
 
-Behavioral baseline modeling, AiTM detection via TLS fingerprinting,
-proxy detection, and network integrity monitoring (ARP spoofing indicators,
-DNS anomalies).
+Behavioral baseline modeling, TLS connection diagnostics (informational),
+proxy header detection, and network integrity monitoring (ARP spoofing
+indicators, DNS anomalies).
+
+NOTE on JA3 fingerprinting: real JA3 interception detection requires
+observing the client's TLS ClientHello, which is only possible with the
+optional local agent installed on the user's machine. Server-side, this
+module can only report informational TLS details of its own outbound
+connection; it CANNOT detect JA3-based AiTM interception.
 """
 
 from __future__ import annotations
@@ -18,15 +24,14 @@ from urllib.parse import urlparse
 
 import httpx
 
+from app.core.url_safety import validate_public_network_target
 
-# --- Known TLS Fingerprint Database (JA3-style hashes for common proxies) ---
-
-KNOWN_PROXY_FINGERPRINTS: set[str] = {
-    # Placeholder hashes representing known AiTM/proxy tool fingerprints
-    "e7d705a3286e19ea42f587b344ee6865",  # evilginx2
-    "6734f37431670b3ab4292b8f60f29984",  # modlishka
-    "cd08e31494f9531f560d64c695473da9",  # muraena
-}
+JA3_DETECTION_NOTE = (
+    "JA3 interception detection is not available server-side; it requires "
+    "the optional local agent. The fingerprint hash below is informational "
+    "only (derived from this server's own TLS connection parameters) and "
+    "is not a JA3/JA3S hash."
+)
 
 # Well-known DNS resolvers for comparison
 TRUSTED_DNS_SERVERS: list[str] = [
@@ -41,6 +46,32 @@ TRUSTED_DNS_SERVERS: list[str] = [
 
 class NetworkAnalyzer:
     """Network integrity and AiTM detection analyzer."""
+
+    # ---- SSRF Guard ----
+
+    @staticmethod
+    def _gate_target(target: str) -> tuple[str | None, dict | None]:
+        """
+        Validate the target before any network connection (SSRF guard).
+
+        Returns (hostname, None) when the target is public and safe to
+        connect to, or (None, blocked_result) when the target is
+        private/loopback/link-local/reserved/metadata, in which case NO
+        connection must be attempted.
+        """
+        try:
+            hostname = validate_public_network_target(target)
+            return hostname, None
+        except ValueError as exc:
+            return None, {
+                "score": 0,
+                "findings": [],
+                "metadata": {
+                    "blocked": True,
+                    "error": str(exc),
+                    "target": target,
+                },
+            }
 
     # ---- Behavioral Baseline Modeling ----
 
@@ -178,10 +209,13 @@ class NetworkAnalyzer:
 
     async def get_tls_fingerprint(self, host: str, port: int = 443) -> dict[str, Any]:
         """
-        Generate a TLS fingerprint for a host connection.
+        Capture informational TLS details of our own outbound connection.
 
-        Captures cipher suite, protocol version, and certificate details
-        to create a composite fingerprint.
+        NOTE: this is NOT a JA3 fingerprint and CANNOT be used to detect
+        AiTM interception server-side (that requires the optional local
+        agent observing the client's ClientHello). The hash is a
+        composite of this server's protocol/cipher/certificate view and
+        is informational only.
 
         Args:
             host: The hostname to fingerprint.
@@ -226,7 +260,8 @@ class NetworkAnalyzer:
 
                     fingerprint["details"] = details
 
-                    # Generate composite fingerprint hash
+                    # Generate composite fingerprint hash (informational only —
+                    # NOT JA3; no known-proxy matching is performed server-side)
                     fp_data = (
                         f"{protocol}|{cipher}|"
                         f"{details.get('cert_issuer', {})}|"
@@ -234,16 +269,8 @@ class NetworkAnalyzer:
                     )
                     fp_hash = hashlib.md5(fp_data.encode()).hexdigest()
                     fingerprint["fingerprint_hash"] = fp_hash
-
-                    # Check against known proxy fingerprints
-                    if fp_hash in KNOWN_PROXY_FINGERPRINTS:
-                        fingerprint["findings"].append({
-                            "category": "aitm_detection",
-                            "pattern_type": "known_proxy_fingerprint",
-                            "severity": "critical",
-                            "detail": "TLS fingerprint matches a known AiTM proxy tool",
-                            "fingerprint": fp_hash,
-                        })
+                    fingerprint["ja3_detection_available"] = False
+                    fingerprint["ja3_detection_note"] = JA3_DETECTION_NOTE
 
                     # Check for weak protocols
                     if protocol and protocol in ("SSLv2", "SSLv3", "TLSv1", "TLSv1.1"):
@@ -301,6 +328,12 @@ class NetworkAnalyzer:
                 hostname = parsed.hostname or host
             else:
                 hostname = host
+
+            # SSRF guard: refuse to connect to non-public targets
+            hostname, blocked = self._gate_target(hostname)
+            if blocked:
+                blocked["metadata"]["analysis_type"] = "aitm_detection"
+                return blocked
 
             all_findings: list[dict[str, Any]] = []
 
@@ -393,6 +426,8 @@ class NetworkAnalyzer:
                     "tls_fingerprint": tls_fp.get("fingerprint_hash"),
                     "latency": latency,
                     "analysis_type": "aitm_detection",
+                    "ja3_interception_detection": "not_available_server_side",
+                    "ja3_detection_note": JA3_DETECTION_NOTE,
                 },
             }
 
@@ -429,6 +464,12 @@ class NetworkAnalyzer:
                 hostname = parsed.hostname or target
             else:
                 hostname = target
+
+            # SSRF guard: refuse to connect to non-public targets
+            hostname, blocked = self._gate_target(hostname)
+            if blocked:
+                blocked["metadata"]["analysis_type"] = "network_integrity"
+                return blocked
 
             all_findings: list[dict[str, Any]] = []
 
@@ -491,6 +532,8 @@ class NetworkAnalyzer:
                     "latency": latency,
                     "tls_fingerprint": tls_fp.get("fingerprint_hash"),
                     "analysis_type": "network_integrity",
+                    "ja3_interception_detection": "not_available_server_side",
+                    "ja3_detection_note": JA3_DETECTION_NOTE,
                 },
             }
 

@@ -51,6 +51,13 @@ npm run dev
 docker compose up --build
 ```
 
+### Tests
+```bash
+cd backend
+.venv/bin/python -m pytest tests/ -q
+```
+Los tests usan un directorio de datos temporal; no tocan los JSON reales.
+
 ## URLs
 
 - **Frontend:** http://localhost:3000
@@ -101,6 +108,83 @@ FRONTEND_URL=https://frontend-kappa-wheat-28.vercel.app
 ```
 
 En Google Cloud, agregar el mismo valor de `GOOGLE_OAUTH_REDIRECT_URI` en **Authorized redirect URIs**.
+
+## Pasarela de pago (Stripe TEST)
+
+CENTINELA ofrece **3 dias de trial gratis** y despues una suscripcion de **US$16/mes**.
+La pasarela esta implementada **exclusivamente en modo TEST**: jamas uses claves live
+de Stripe en este proyecto.
+
+### Configuracion
+
+```bash
+cd backend
+cp .env.example .env
+# Editar .env:
+STRIPE_SECRET_KEY=sk_test_...        # clave secreta TEST del dashboard
+STRIPE_WEBHOOK_SECRET=whsec_...      # signing secret (ver abajo)
+STRIPE_PRICE_ID=price_...            # opcional; ver nota
+BILLING_ENFORCE=true                 # exigir trial/suscripcion en analisis
+ADMIN_EMAILS=admin@example.com       # opcional; emails con rol de admin (coma)
+```
+
+- Si `STRIPE_PRICE_ID` se deja vacio, el backend busca (o crea) el producto
+  **"CENTINELA Pro"** (USD 16/mes recurrente) en la cuenta TEST y registra el
+  price ID en los logs para pegarlo en el `.env`.
+- Sin `STRIPE_SECRET_KEY`, el backend opera en **modo trial-only**: el checkout
+  responde `503 pasarela_no_configurada` y solo el trial de 3 dias otorga acceso.
+
+### Webhook local
+
+Instala el CLI de Stripe (https://docs.stripe.com/stripe-cli) y reenvia los
+eventos al backend en desarrollo:
+
+```bash
+stripe listen --forward-to localhost:8000/api/v1/billing/webhook
+```
+
+El comando imprime un signing secret (`whsec_...`): copialo a
+`STRIPE_WEBHOOK_SECRET`. El endpoint verifica la firma `Stripe-Signature` con
+el cuerpo crudo del request y esta **exento del rate limiting** (los reintentos
+de Stripe no deben bloquearse).
+
+### Endpoints
+
+| Metodo | Ruta | Auth | Descripcion |
+|---|---|---|---|
+| POST | `/api/v1/billing/checkout` | JWT | URL de Stripe Checkout (409 si ya hay suscripcion activa, 503 si no hay pasarela) |
+| POST | `/api/v1/billing/portal` | JWT | URL del portal de facturacion (404 sin customer de Stripe) |
+| GET | `/api/v1/billing/status` | JWT | `has_access`, `status`, `trial_end`, `plan_price` ("US$16/mes") |
+| POST | `/api/v1/billing/webhook` | firma Stripe | Recibe `checkout.session.completed`, `customer.subscription.*`, `invoice.payment_failed` |
+| GET | `/api/v1/billing/payments` | JWT | Historial de cobros del customer (max 20, mas recientes primero; `[]` sin customer, 503 sin pasarela) |
+| POST | `/api/v1/billing/admin/refund` | JWT admin | Reembolso administrativo (`payment_id` = `cs_`/`pi_`/`ch_`, `reason` y `amount` opcionales; 403 sin rol admin) |
+
+Eventos procesados: `checkout.session.completed` (vincula customer/suscripcion
+al usuario), `customer.subscription.updated` / `.deleted`,
+`invoice.payment_failed` (sincronizan estado en `backend/data/billing.json`),
+`invoice.payment_succeeded` (guarda `last_payment_*` y renova
+`current_period_end`) y `charge.refunded` / `charge.refund.updated` (reembolso
+completo -> status `refunded`: sin acceso aunque el trial local siga vivo).
+
+Flujo de reembolsos: el admin crea el refund con
+`POST /api/v1/billing/admin/refund` (admite `cs_...`, `pi_...` o `ch_...`,
+con `reason` en `duplicate|fraudulent|requested_by_customer` y `amount` en
+centavos para reembolso parcial) o directamente en el dashboard de Stripe
+TEST; en ambos casos el webhook marca el reembolso en el store local.
+
+### Enforcement
+
+Con `BILLING_ENFORCE=true`, los endpoints de analisis, chat y dashboard exigen
+trial vigente o suscripcion activa/trialing; si no, responden
+`402 trial_expirado_o_suscripcion_requerida`. Los usuarios **anonimos**
+conservan el comportamiento anterior segun `REQUIRE_AUTH_FOR_ANALYSIS`
+(sin cambios respecto a versiones previas). Los administradores (`is_admin`)
+siempre tienen acceso.
+
+**Activacion en LIVE (fuera de alcance por ahora):** crear producto/precio en
+el dashboard live, reemplazar claves por las live correspondientes, configurar
+el endpoint del webhook en el dashboard de Stripe (en vez de `stripe listen`),
+y revisar terminos fiscales/legales antes de cobrar.
 
 ## Deploy Backend en Render
 

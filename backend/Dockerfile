@@ -27,8 +27,9 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 
 COPY . .
 
-# Create logs directory
-RUN mkdir -p /app/logs && chown -R sentinel:sentinel /app
+# Create logs directory and the JSON-store data dir (writable by the
+# non-root user; the compose file mounts a named volume over /app/data)
+RUN mkdir -p /app/logs /app/data && chown -R sentinel:sentinel /app
 
 # Security: read-only filesystem for app code
 RUN chmod -R 555 /app/app
@@ -42,5 +43,8 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')" || exit 1
 
-# Production: no reload, workers based on CPU
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4", "--limit-concurrency", "100", "--timeout-keep-alive", "5"]
+# Production: no reload. Single worker: the JSON stores (users, token
+# blacklist, analysis history) are per-process; with multiple workers each
+# process would see different data. Scale vertically or add a shared store
+# (PostgreSQL/Redis) before raising the worker count.
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--limit-concurrency", "100", "--timeout-keep-alive", "5"]

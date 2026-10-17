@@ -26,6 +26,10 @@ services:
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:3001}
     volumes:
       - backend_logs:/app/logs
+      # JSON stores (users, token blacklist, analysis history) live in
+      # /app/data; without a mounted volume the read-only root filesystem
+      # would crash at startup and history would not survive restarts.
+      - backend_data:/app/data
     restart: unless-stopped
     read_only: true
     tmpfs:
@@ -60,3 +64,4 @@ services:
 
 volumes:
   backend_logs:
+  backend_data:

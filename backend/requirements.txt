@@ -5,6 +5,23 @@ pydantic-settings==2.5.0
 httpx==0.27.0
 python-multipart==0.0.9
 python-jose[cryptography]==3.3.0
+# passlib 1.7.4 is incompatible with bcrypt>=4.1; keep bcrypt pinned to 4.0.1.
+# Low-risk alternative later: drop passlib and use bcrypt directly.
 passlib[bcrypt]==1.7.4
 bcrypt==4.0.1
 openai==1.52.0
+
+# Image handling (EXIF analysis, upload magic-byte verification)
+Pillow>=10.0.0
+
+# QR decoding (requires system zbar library: apt install libzbar0 / brew install zbar)
+pyzbar>=0.1.9
+
+# OCR (requires the Tesseract binary: apt install tesseract-ocr / brew install tesseract)
+pytesseract>=0.3.10
+
+# Testing
+pytest>=8.0.0
+
+# Pagos (SOLO Stripe TEST mode; jamas claves live en este repo)
+stripe>=16.0.0

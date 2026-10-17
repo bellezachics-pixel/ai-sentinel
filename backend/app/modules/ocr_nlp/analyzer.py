@@ -1,9 +1,13 @@
 """
 AI-Sentinel OCR & NLP Analyzer Module
 
-Provides image text extraction (OCR placeholder using PIL) and NLP-based
-analysis for spear phishing detection and social engineering pattern
-recognition.
+Real NLP-based analysis for spear phishing detection and social
+engineering pattern recognition, plus image text extraction (OCR) via
+pytesseract when it is installed.
+
+When pytesseract (and the Tesseract binary) is not available, the OCR
+stage reports status "unavailable" honestly instead of guessing; the NLP
+analysis on any extracted text remains fully functional.
 """
 
 from __future__ import annotations
@@ -87,15 +91,17 @@ class OCRNLPAnalyzer:
 
     def _extract_text_from_image(self, image_data: bytes) -> dict[str, Any]:
         """
-        Extract text from an image.
+        Extract text from an image using pytesseract when available.
 
-        Uses PIL for basic image analysis. Full OCR requires Tesseract
-        (pytesseract) which is used if available.
+        Returns ocr_status "ok" with extracted text on success, or
+        ocr_status "unavailable" (with a clear error) when pytesseract or
+        Pillow is not installed. No guessing is performed.
         """
         result: dict[str, Any] = {
             "text": "",
             "confidence": 0.0,
             "method": None,
+            "ocr_status": None,
             "image_info": {},
             "error": None,
         }
@@ -133,17 +139,14 @@ class OCRNLPAnalyzer:
                     result["confidence"] = 50.0 if result["text"] else 0.0
 
             except ImportError:
-                # Fallback: basic image analysis without OCR
-                result["method"] = "pil_basic"
+                # pytesseract not installed: report OCR as unavailable instead
+                # of guessing. Basic image info is still reported.
+                result["method"] = "unavailable"
                 result["text"] = ""
+                result["ocr_status"] = "unavailable"
                 result["error"] = (
                     "pytesseract not installed. Install with: "
-                    "pip install pytesseract (requires Tesseract binary)"
-                )
-
-                # Provide basic image analysis
-                result["image_info"]["has_text_like_regions"] = (
-                    self._detect_text_regions(image)
+                    "pip install pytesseract (requires the Tesseract binary)"
                 )
 
         except ImportError:
@@ -151,37 +154,16 @@ class OCRNLPAnalyzer:
                 "PIL/Pillow not installed. Install with: pip install Pillow"
             )
             result["method"] = "unavailable"
+            result["ocr_status"] = "unavailable"
 
         except Exception as exc:
             result["error"] = f"Image text extraction failed: {str(exc)}"
+            result["ocr_status"] = "unavailable"
+
+        if result["ocr_status"] is None:
+            result["ocr_status"] = "ok" if result["text"] else "no_text_detected"
 
         return result
-
-    @staticmethod
-    def _detect_text_regions(image: Any) -> bool:
-        """
-        Basic heuristic to detect if an image likely contains text.
-
-        Uses contrast and edge analysis as a rough indicator.
-        """
-        try:
-            # Convert to grayscale
-            gray = image.convert("L")
-            pixels = list(gray.getdata())
-
-            if not pixels:
-                return False
-
-            # Calculate contrast (standard deviation of pixel values)
-            mean = sum(pixels) / len(pixels)
-            variance = sum((p - mean) ** 2 for p in pixels) / len(pixels)
-            std_dev = variance ** 0.5
-
-            # High contrast images are more likely to contain text
-            return std_dev > 40
-
-        except Exception:
-            return False
 
     # ---- NLP Social Engineering Detection ----
 
@@ -420,7 +402,7 @@ class OCRNLPAnalyzer:
                 # Run social engineering detection on extracted text
                 se_result = await self.detect_social_engineering(extracted_text)
                 all_findings.extend(se_result.get("findings", []))
-            else:
+            elif ocr_result.get("ocr_status") != "unavailable":
                 all_findings.append({
                     "category": "ocr_status",
                     "severity": "low",
@@ -445,6 +427,7 @@ class OCRNLPAnalyzer:
                 "findings": all_findings,
                 "metadata": {
                     "ocr_method": ocr_result.get("method"),
+                    "ocr_status": ocr_result.get("ocr_status"),
                     "ocr_confidence": ocr_result.get("confidence", 0),
                     "extracted_text": extracted_text[:2000] if extracted_text else "",
                     "extracted_text_length": len(extracted_text),

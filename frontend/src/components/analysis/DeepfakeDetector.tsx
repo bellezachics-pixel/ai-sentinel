@@ -81,6 +81,9 @@ export default function DeepfakeDetector() {
   };
 
   const confidenceScore = result?.metadata?.confidence as number | undefined;
+  const heuristicOnly = result?.metadata?.metadata_heuristic_only as
+    | boolean
+    | undefined;
   const manipulationIndicators = result?.findings.filter(
     (f) =>
       f.type.toLowerCase().includes("manipulation") ||
@@ -92,10 +95,20 @@ export default function DeepfakeDetector() {
   return (
     <div className="space-y-6 animate-fade-in-up">
       <div>
-        <h2 className="text-xl font-bold text-white">Detector de Deepfakes</h2>
+        <h2 className="text-xl font-bold text-white">Análisis de Medios</h2>
         <p className="text-sm text-slate-500 mt-0.5">
-          Analiza imágenes, audio y video para detectar manipulaciones con IA
+          Análisis de metadatos e inconsistencias en imágenes, audio y video
+          para detectar posibles manipulaciones con IA
         </p>
+        <div className="mt-3 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
+          <p className="text-xs text-amber-400/90">
+            <strong className="font-semibold">Limitaciones:</strong> este
+            análisis se basa en metadatos e inconsistencias técnicas. Los
+            medios re-codificados o procesados profesionalmente pueden no
+            mostrar señales en los metadatos, por lo que un resultado sin
+            hallazgos no garantiza que el contenido sea auténtico.
+          </p>
+        </div>
       </div>
 
       {/* Upload Zone */}
@@ -197,7 +210,7 @@ export default function DeepfakeDetector() {
               ) : (
                 <ScanEye className="w-4 h-4" />
               )}
-              {loading ? "Analizando..." : "Detectar Deepfake"}
+              {loading ? "Analizando..." : "Analizar metadatos"}
             </button>
           </div>
         )}
@@ -233,7 +246,19 @@ export default function DeepfakeDetector() {
 
       {/* Results */}
       {result && !loading && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="space-y-4">
+          {heuristicOnly === true && (
+            <div className="rounded-xl bg-amber-500/5 border border-amber-500/20 p-4 flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-400/90">
+                Este resultado se basa únicamente en heurísticas de metadatos.
+                Los medios re-codificados o bien procesados pueden no mostrar
+                señales en los metadatos, y la ausencia de hallazgos no
+                garantiza autenticidad.
+              </p>
+            </div>
+          )}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Score + Confidence */}
           <div className="rounded-xl bg-[#111827] border border-[#1e293b] p-5 space-y-5">
             <div className="flex justify-center">
@@ -310,6 +335,7 @@ export default function DeepfakeDetector() {
               </div>
             )}
           </div>
+        </div>
         </div>
       )}
     </div>

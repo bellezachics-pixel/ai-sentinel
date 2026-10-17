@@ -9,124 +9,22 @@ import ThreatDistribution from "./ThreatDistribution";
 import RecentAnalyses from "./RecentAnalyses";
 import NetworkStatus from "./NetworkStatus";
 import IntegrationsStatus from "./IntegrationsStatus";
-import { RefreshCw } from "lucide-react";
+import PlanStatusCard from "@/components/billing/PlanStatusCard";
+import PaymentHistory from "@/components/billing/PaymentHistory";
+import { useBilling } from "@/components/billing/BillingContext";
+import { RefreshCw, Loader2, AlertTriangle, ShieldCheck, Search } from "lucide-react";
 
-const MOCK_STATS: DashboardStats = {
-  total_scans: 1247,
-  threats_detected: 23,
-  active_monitors: 5,
-  risk_distribution: { low: 892, medium: 278, high: 54, critical: 23 },
-  recent_analyses: [
-    {
-      id: "1",
-      analysis_type: "url",
-      target: "https://suspicious-login.example.com/verify",
-      timestamp: new Date(Date.now() - 300000).toISOString(),
-      risk_score: {
-        total: 78,
-        url_score: 85,
-        content_score: 70,
-        header_score: 60,
-        network_score: 75,
-        level: "high",
-        breakdown: {},
-      },
-      findings: [],
-      threat_intel: [],
-      recommendations: [],
-      metadata: {},
-    },
-    {
-      id: "2",
-      analysis_type: "email",
-      target: "support@bank-secure.com",
-      timestamp: new Date(Date.now() - 900000).toISOString(),
-      risk_score: {
-        total: 92,
-        url_score: 0,
-        content_score: 95,
-        header_score: 88,
-        network_score: 0,
-        level: "critical",
-        breakdown: {},
-      },
-      findings: [],
-      threat_intel: [],
-      recommendations: [],
-      metadata: {},
-    },
-    {
-      id: "3",
-      analysis_type: "network",
-      target: "192.168.1.1",
-      timestamp: new Date(Date.now() - 1800000).toISOString(),
-      risk_score: {
-        total: 15,
-        url_score: 0,
-        content_score: 0,
-        header_score: 0,
-        network_score: 15,
-        level: "low",
-        breakdown: {},
-      },
-      findings: [],
-      threat_intel: [],
-      recommendations: [],
-      metadata: {},
-    },
-    {
-      id: "4",
-      analysis_type: "qr",
-      target: "qr_code_image.png",
-      timestamp: new Date(Date.now() - 3600000).toISOString(),
-      risk_score: {
-        total: 45,
-        url_score: 50,
-        content_score: 40,
-        header_score: 0,
-        network_score: 0,
-        level: "medium",
-        breakdown: {},
-      },
-      findings: [],
-      threat_intel: [],
-      recommendations: [],
-      metadata: {},
-    },
-    {
-      id: "5",
-      analysis_type: "media",
-      target: "video_conference_clip.mp4",
-      timestamp: new Date(Date.now() - 7200000).toISOString(),
-      risk_score: {
-        total: 62,
-        url_score: 0,
-        content_score: 62,
-        header_score: 0,
-        network_score: 0,
-        level: "high",
-        breakdown: {},
-      },
-      findings: [],
-      threat_intel: [],
-      recommendations: [],
-      metadata: {},
-    },
-  ],
-  network_status: {
-    is_secure: true,
-    risk_indicators: [],
-  },
-};
+type LoadStatus = "loading" | "error" | "ready";
 
 export default function Dashboard() {
-  const [stats, setStats] = useState<DashboardStats>(MOCK_STATS);
+  const { state: billingState } = useBilling();
+  const [stats, setStats] = useState<DashboardStats | null>(null);
   const [integrations, setIntegrations] =
     useState<IntegrationsStatusType | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState<LoadStatus>("loading");
 
   const fetchStats = async () => {
-    setLoading(true);
+    setStatus("loading");
     try {
       const [data, integrationData] = await Promise.all([
         api.getDashboardStats(),
@@ -134,53 +32,30 @@ export default function Dashboard() {
       ]);
       setStats(data);
       setIntegrations(integrationData);
+      setStatus("ready");
     } catch {
-      // Use mock data silently when API is unavailable
-      setStats(MOCK_STATS);
-    } finally {
-      setLoading(false);
+      setStats(null);
+      setIntegrations(null);
+      setStatus("error");
     }
   };
 
   useEffect(() => {
-    let isMounted = true;
-
-    Promise.all([api.getDashboardStats(), api.getIntegrationsStatus()])
-      .then(([data, integrationData]) => {
-        if (isMounted) {
-          setStats(data);
-          setIntegrations(integrationData);
-        }
-      })
-      .catch(() => {
-        if (isMounted) {
-          setStats(MOCK_STATS);
-        }
-      })
-      .finally(() => {
-        if (isMounted) {
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      isMounted = false;
-    };
+    fetchStats();
   }, []);
 
-  const overallRisk =
-    stats.risk_distribution.critical > 0
+  const overallRisk = stats
+    ? stats.risk_distribution.critical > 0
       ? Math.min(
           100,
-          50 +
-            stats.risk_distribution.critical * 2 +
-            stats.risk_distribution.high
+          50 + stats.risk_distribution.critical * 2 + stats.risk_distribution.high
         )
       : stats.risk_distribution.high > 0
       ? Math.min(75, 30 + stats.risk_distribution.high)
       : stats.risk_distribution.medium > 0
       ? Math.min(50, 10 + Math.floor(stats.risk_distribution.medium / 10))
-      : 8;
+      : 8
+    : 0;
 
   return (
     <div className="space-y-6 animate-fade-in-up">
@@ -196,56 +71,123 @@ export default function Dashboard() {
         </div>
         <button
           onClick={fetchStats}
-          disabled={loading}
+          disabled={status === "loading"}
           className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#111827] border border-[#1e293b] text-sm text-slate-400 hover:text-cyan-400 hover:border-cyan-500/30 transition-colors disabled:opacity-50"
         >
           <RefreshCw
-            className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
+            className={`w-4 h-4 ${status === "loading" ? "animate-spin" : ""}`}
           />
           Actualizar
         </button>
       </div>
 
-      {/* Stats Cards */}
-      <StatsCards
-        totalScans={stats.total_scans}
-        threatsDetected={stats.threats_detected}
-        activeMonitors={stats.active_monitors}
-        networkSecure={stats.network_status.is_secure}
-      />
-
-      <div className="rounded-xl bg-[#111827] border border-[#1e293b] p-5">
-        <IntegrationsStatus integrations={integrations} loading={loading} />
-      </div>
-
-      {/* Middle Row: Risk Gauge + Threat Distribution + Network Status */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Risk Gauge */}
-        <div className="rounded-xl bg-[#111827] border border-[#1e293b] p-5 flex items-center justify-center">
-          <RiskGauge score={overallRisk} />
+      {/* Loading */}
+      {status === "loading" && (
+        <div className="rounded-xl bg-[#111827] border border-[#1e293b] p-12 flex flex-col items-center gap-4">
+          <Loader2 className="w-8 h-8 animate-spin text-cyan-400" />
+          <p className="text-sm text-slate-400">Cargando tu panel de seguridad...</p>
         </div>
+      )}
 
-        {/* Threat Distribution */}
-        <div className="rounded-xl bg-[#111827] border border-[#1e293b] p-5">
-          <ThreatDistribution distribution={stats.risk_distribution} />
+      {/* Error */}
+      {status === "error" && (
+        <div className="rounded-xl bg-red-500/5 border border-red-500/20 p-8 flex flex-col items-center gap-4 text-center">
+          <AlertTriangle className="w-10 h-10 text-red-400" />
+          <div>
+            <p className="text-sm font-semibold text-red-400">
+              No se pudo conectar con el servidor de análisis
+            </p>
+            <p className="text-xs text-slate-500 mt-1">
+              Revisa tu conexión e inténtalo de nuevo.
+            </p>
+          </div>
+          <button
+            onClick={fetchStats}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-cyan-600 text-sm font-medium text-white transition-colors hover:bg-cyan-500"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Reintentar
+          </button>
         </div>
+      )}
 
-        {/* Network Status */}
-        <div className="rounded-xl bg-[#111827] border border-[#1e293b] p-5">
-          <NetworkStatus
-            isSecure={stats.network_status.is_secure}
-            riskIndicators={stats.network_status.risk_indicators}
+      {/* Ready */}
+      {status === "ready" && stats && (
+        <>
+          {/* Empty state */}
+          {stats.total_scans === 0 && (
+            <div className="rounded-xl bg-[#111827] border border-[#1e293b] p-8 flex flex-col items-center gap-4 text-center">
+              <ShieldCheck className="w-10 h-10 text-emerald-400" />
+              <div>
+                <p className="text-sm font-semibold text-slate-200">
+                  Aún no hay análisis
+                </p>
+                <p className="text-xs text-slate-500 mt-1 max-w-md">
+                  Cuando ejecutes tu primer escaneo, aquí verás un resumen de tu
+                  seguridad, las amenazas detectadas y tus análisis recientes.
+                </p>
+              </div>
+              <a
+                href="#"
+                onClick={(e) => e.preventDefault()}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-cyan-600/10 border border-cyan-500/30 text-sm text-cyan-400"
+              >
+                <Search className="w-4 h-4" />
+                Usa &quot;Analizar Todo&quot; en el menú para empezar
+              </a>
+            </div>
+          )}
+
+          {/* Stats Cards */}
+          <StatsCards
+            totalScans={stats.total_scans}
+            threatsDetected={stats.threats_detected}
+            activeMonitors={stats.active_monitors}
+            networkSecure={stats.network_status.is_secure}
           />
-        </div>
-      </div>
 
-      {/* Recent Analyses */}
-      <div className="rounded-xl bg-[#111827] border border-[#1e293b] p-5">
-        <h3 className="text-sm font-semibold text-slate-300 mb-4">
-          Análisis Recientes
-        </h3>
-        <RecentAnalyses analyses={stats.recent_analyses} />
-      </div>
+          <div className="rounded-xl bg-[#111827] border border-[#1e293b] p-5">
+            <IntegrationsStatus integrations={integrations} loading={false} />
+          </div>
+
+          {/* Middle Row: Risk Gauge + Threat Distribution + Network Status + Plan */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4">
+            {/* Risk Gauge */}
+            <div className="rounded-xl bg-[#111827] border border-[#1e293b] p-5 flex items-center justify-center">
+              <RiskGauge score={overallRisk} />
+            </div>
+
+            {/* Threat Distribution */}
+            <div className="rounded-xl bg-[#111827] border border-[#1e293b] p-5">
+              <ThreatDistribution distribution={stats.risk_distribution} />
+            </div>
+
+            {/* Network Status */}
+            <div className="rounded-xl bg-[#111827] border border-[#1e293b] p-5">
+              <NetworkStatus
+                isSecure={stats.network_status.is_secure}
+                riskIndicators={stats.network_status.risk_indicators}
+              />
+            </div>
+
+            {/* Plan / Billing status */}
+            {billingState.kind === "ready" && (
+              <>
+                <PlanStatusCard billing={billingState.billing} />
+                <PaymentHistory />
+              </>
+            )}
+          </div>
+
+          {/* Recent Analyses */}
+          <div className="rounded-xl bg-[#111827] border border-[#1e293b] p-5">
+            <h3 className="text-sm font-semibold text-slate-300 mb-4">
+              Análisis Recientes
+            </h3>
+            <RecentAnalyses analyses={stats.recent_analyses} />
+          </div>
+        </>
+      )}
     </div>
   );
 }

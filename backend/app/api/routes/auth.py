@@ -7,10 +7,12 @@ import re
 import secrets
 import uuid
 from datetime import datetime, timedelta
+from typing import Optional
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, HTTPException, status, Depends, Request
 from fastapi.responses import RedirectResponse
+from pydantic import BaseModel
 import httpx
 
 from app.core.auth import (
@@ -24,9 +26,11 @@ from app.core.auth import (
     create_refresh_token,
     decode_token,
     revoke_token,
+    is_token_revoked,
     get_user,
     create_user,
     require_auth,
+    set_user_trial_start,
     users_db,
 )
 from app.core.config import settings
@@ -79,6 +83,7 @@ def _create_google_user(email: str) -> UserInDB:
         is_admin=False,
     )
     create_user(user)
+    set_user_trial_start(user)  # trial local de 3 dias desde el registro
     return user
 
 
@@ -123,6 +128,7 @@ async def register(request: Request, user_data: UserCreate):
         hashed_password=hash_password(user_data.password),
     )
     create_user(user)
+    set_user_trial_start(user)  # trial local de 3 dias desde el registro
 
     access_token = create_access_token(data={"sub": user.username})
     refresh_token = create_refresh_token(data={"sub": user.username})
@@ -245,9 +251,79 @@ async def google_callback(request: Request, code: str | None = None, state: str 
 
 
 @router.post("/logout")
-async def logout(user: UserInDB = Depends(require_auth)):
+async def logout(request: Request, user: UserInDB = Depends(require_auth)):
     """Cerrar sesion (revocar token)."""
+    auth_header = request.headers.get("Authorization", "")
+    token = auth_header[7:].strip() if auth_header.lower().startswith("bearer ") else ""
+    if token:
+        payload = decode_token(token)
+        jti = payload.get("jti")
+        if jti:
+            revoke_token(jti)
     return {"detail": "Sesion cerrada exitosamente"}
+
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: Optional[str] = None
+
+
+@router.post("/refresh", response_model=TokenResponse)
+async def refresh_token(request: Request, body: Optional[RefreshTokenRequest] = None):
+    """Intercambiar un refresh token por un nuevo par de tokens (rotacion)."""
+    token = body.refresh_token if body and body.refresh_token else None
+
+    if not token:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.lower().startswith("bearer "):
+            token = auth_header[7:].strip()
+
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token requerido",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    payload = decode_token(token)
+
+    if payload.get("type") != "refresh":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Tipo de token invalido: se requiere un refresh token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    jti = payload.get("jti")
+    if jti and is_token_revoked(jti):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token revocado",
+        )
+
+    username = payload.get("sub")
+    user = get_user(username) if username else None
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Usuario no encontrado",
+        )
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cuenta desactivada",
+        )
+
+    # Rotacion: revocar el refresh token usado y emitir par nuevo
+    if jti:
+        revoke_token(jti)
+
+    access_token = create_access_token(data={"sub": user.username})
+    new_refresh_token = create_refresh_token(data={"sub": user.username})
+
+    return TokenResponse(
+        access_token=access_token,
+        refresh_token=new_refresh_token,
+    )
 
 
 @router.get("/me")

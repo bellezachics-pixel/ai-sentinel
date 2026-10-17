@@ -307,6 +307,10 @@ class QRishingAnalyzer:
             # Decode QR codes
             decoded_items = self._decode_qr(image_data)
 
+            decoder_available = not any(
+                item.get("type") == "UNAVAILABLE" for item in decoded_items
+            )
+
             all_findings: list[dict[str, Any]] = []
             extracted_urls: list[str] = []
             decoded_data: list[str] = []
@@ -373,6 +377,8 @@ class QRishingAnalyzer:
                     "extracted_urls": extracted_urls,
                     "image_size_bytes": len(image_data),
                     "analysis_type": "qrishing_analysis",
+                    "decoder_available": decoder_available,
+                    "status": "ok" if decoder_available else "decoder_unavailable",
                 },
             }
 

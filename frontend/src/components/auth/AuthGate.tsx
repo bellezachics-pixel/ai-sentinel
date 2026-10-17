@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { Lock, Loader2, LogIn, Mail, Shield, UserPlus } from "lucide-react";
 import {
-  ApiError,
   api,
   clearAuthTokens,
   getAccessToken,
@@ -39,6 +38,10 @@ export default function AuthGate({ children }: AuthGateProps) {
     if (hashAccessToken) {
       setAuthTokens(hashAccessToken, hashRefreshToken || undefined);
       window.history.replaceState(null, "", window.location.pathname);
+      if (window.location.pathname !== "/app") {
+        window.location.replace("/app");
+        return;
+      }
     } else if (hashError) {
       window.history.replaceState(null, "", window.location.pathname);
       queueMicrotask(() => {
@@ -82,14 +85,14 @@ export default function AuthGate({ children }: AuthGateProps) {
       setAuthTokens(tokens.access_token, tokens.refresh_token);
       const profile = await api.getMe();
       setUser(profile);
-    } catch (err) {
-      const backendMessage =
-        err instanceof ApiError || err instanceof Error ? err.message : "";
+      if (window.location.pathname !== "/app") {
+        window.location.assign("/app");
+      }
+    } catch {
       setError(
-        backendMessage ||
-          (mode === "login"
-            ? "No se pudo iniciar sesion. Revisa usuario y contrasena."
-            : "No se pudo crear la cuenta. Usa una contrasena fuerte y datos validos.")
+        mode === "login"
+          ? "No se pudo iniciar sesion. Revisa usuario y contrasena."
+          : "No se pudo crear la cuenta. Usa una contrasena fuerte y datos validos."
       );
     } finally {
       setSubmitting(false);
@@ -128,7 +131,7 @@ export default function AuthGate({ children }: AuthGateProps) {
             <Shield className="h-6 w-6 text-cyan-400" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-white">AI-Sentinel</h1>
+            <h1 className="text-lg font-bold text-white">CENTINELA</h1>
             <p className="text-xs text-slate-500">Acceso seguro al panel</p>
           </div>
         </div>
@@ -217,13 +220,7 @@ export default function AuthGate({ children }: AuthGateProps) {
           ) : (
             <Lock className="h-4 w-4" />
           )}
-          {submitting
-            ? mode === "login"
-              ? "Entrando..."
-              : "Creando cuenta..."
-            : mode === "login"
-              ? "Iniciar sesion"
-              : "Crear cuenta"}
+          {mode === "login" ? "Iniciar sesion" : "Crear cuenta"}
         </button>
 
         {mode === "register" && (

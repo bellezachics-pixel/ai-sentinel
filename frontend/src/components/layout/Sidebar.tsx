@@ -1,20 +1,22 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Shield,
   LayoutDashboard,
   Globe,
   Mail,
-  Smartphone,
   MessageSquare,
   Fingerprint,
   FolderOpen,
   Bot,
-  Newspaper,
   QrCode,
   Wifi,
   Search,
+  Link2,
+  ScanEye,
+  Radar,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
@@ -30,15 +32,16 @@ export type ViewType =
   | "universal-scan"
   | "internet"
   | "correos"
-  | "telefono"
+  | "url-scanner"
   | "mensajes"
   | "identidad"
   | "archivos"
   | "ia-detector"
-  | "informacion"
+  | "medios"
   | "qr-scanner"
   | "red"
   | "sentinel-ia"
+  | "threat-intel"
   | "premium";
 
 interface NavItem {
@@ -65,6 +68,7 @@ const navGroups: NavGroup[] = [
     items: [
       { id: "internet", label: "Internet", icon: Globe },
       { id: "correos", label: "Correos", icon: Mail },
+      { id: "url-scanner", label: "Analizar Enlace", icon: Link2 },
       { id: "mensajes", label: "Mensajes", icon: MessageSquare },
       { id: "archivos", label: "Archivos", icon: FolderOpen },
       { id: "qr-scanner", label: "QR", icon: QrCode },
@@ -73,8 +77,8 @@ const navGroups: NavGroup[] = [
   {
     title: "Seguridad",
     items: [
-      { id: "telefono", label: "Telefono", icon: Smartphone },
       { id: "red", label: "Red", icon: Wifi },
+      { id: "medios", label: "Analisis de Medios", icon: ScanEye },
       { id: "identidad", label: "Identidad Digital", icon: Fingerprint },
     ],
   },
@@ -82,14 +86,14 @@ const navGroups: NavGroup[] = [
     title: "Inteligencia",
     items: [
       { id: "ia-detector", label: "Detector IA", icon: Bot },
-      { id: "informacion", label: "Informacion", icon: Newspaper },
+      { id: "threat-intel", label: "Inteligencia de Amenazas", icon: Radar },
       { id: "sentinel-ia", label: "Sentinel IA", icon: MessageCircle },
     ],
   },
   {
     title: "Extra",
     items: [
-      { id: "premium", label: "Premium", icon: Crown },
+      { id: "premium", label: "Herramientas Pro", icon: Crown },
     ],
   },
 ];
@@ -98,6 +102,7 @@ interface SidebarProps {
   activeView: ViewType;
   onViewChange: (view: ViewType) => void;
   onLoginClick?: () => void;
+  onLogout?: () => void;
   mobileOpen?: boolean;
   onMobileClose?: () => void;
 }
@@ -106,9 +111,11 @@ export default function Sidebar({
   activeView,
   onViewChange,
   onLoginClick,
+  onLogout,
   mobileOpen = false,
   onMobileClose,
 }: SidebarProps) {
+  const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const [isLoggedIn, setIsLoggedIn] = useState(() => !!getToken());
@@ -120,7 +127,11 @@ export default function Sidebar({
   const handleLogout = () => {
     clearToken();
     setIsLoggedIn(false);
-    window.location.reload();
+    if (onLogout) {
+      onLogout();
+    } else {
+      router.push("/app");
+    }
   };
 
   return (
@@ -147,7 +158,7 @@ export default function Sidebar({
         </div>
         {!collapsed && (
           <div className="overflow-hidden">
-            <h1 className="text-sm font-bold text-white tracking-wide">AI-SENTINEL</h1>
+            <h1 className="text-sm font-bold text-white tracking-wide">CENTINELA</h1>
             <p className="text-[10px] text-cyan-400/70 tracking-widest uppercase">v1.0</p>
           </div>
         )}

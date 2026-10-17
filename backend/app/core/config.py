@@ -53,12 +53,30 @@ class Settings(BaseSettings):
     SECRET_KEY: str = ""
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 30
 
     # Admin user (only created if ADMIN_PASSWORD is set)
     ADMIN_PASSWORD: Optional[str] = None
+    # Emails adicionales con rol de admin (separados por coma). Complementa
+    # el flag is_admin de cada usuario sin necesidad de panel de admin.
+    ADMIN_EMAILS: str = ""
 
     # Auth requirement for analysis endpoints
     REQUIRE_AUTH: bool = True
+
+    # ============================================================
+    # Stripe / Billing - SOLO modo TEST. Jamas usar claves live.
+    # STRIPE_PRICE_ID es opcional: si esta vacio, el backend busca (o
+    # crea) el producto "CENTINELA Pro" (USD 16/mes recurrente) en el
+    # dashboard de Stripe TEST y registra el price ID en los logs.
+    # ============================================================
+    STRIPE_SECRET_KEY: str = ""
+    STRIPE_WEBHOOK_SECRET: str = ""
+    STRIPE_PRICE_ID: str = ""
+    # Si es False, la suscripcion/trial NO se exige en los endpoints de
+    # analisis (todos los usuarios autenticados pasan). El trial local de
+    # 3 dias sigue computando para /billing/status.
+    BILLING_ENFORCE: bool = True
 
     class Config:
         env_file = ".env"

@@ -1,9 +1,14 @@
 """
 AI-Sentinel Deepfake Analyzer Module
 
-Analyzes image and audio file metadata for manipulation signs and
-synthetic media indicators. Provides heuristic-based detection without
-requiring GPU-based ML models.
+Analyzes image and audio file METADATA for manipulation signs and
+synthetic media indicators (EXIF, headers, tags, typical AI dimensions).
+
+IMPORTANT: this module performs metadata heuristics ONLY. It does NOT
+perform pixel-level forensics (e.g. face warping artifacts, GAN
+fingerprinting) or audio signal forensics (e.g. spectral artifacts of
+neural vocoders). Results are indicative, not conclusive, and are
+labeled as such in every response.
 """
 
 from __future__ import annotations
@@ -417,6 +422,10 @@ class DeepfakeAnalyzer:
         """
         Analyze a media file for deepfake and manipulation indicators.
 
+        METADATA HEURISTICS ONLY: pixel-level image forensics and audio
+        signal forensics are NOT performed. The returned metadata is
+        labeled ``metadata_heuristic_only`` accordingly.
+
         Args:
             file_data: Raw file bytes.
             media_type: One of "image", "audio", or "auto".
@@ -495,6 +504,15 @@ class DeepfakeAnalyzer:
                     "exif": analysis.get("exif", {}),
                     "dimensions": analysis.get("dimensions"),
                     "analysis_type": "deepfake_analysis",
+                    "metadata_heuristic_only": True,
+                    "pixel_forensics_performed": False,
+                    "audio_forensics_performed": False,
+                    "summary": (
+                        "Analisis basado unicamente en metadatos (EXIF, "
+                        "cabeceras, marcas tipicas de IA). No se realizaron "
+                        "forense de pixeles ni de senal de audio; el "
+                        "resultado es indicativo, no concluyente."
+                    ),
                 },
             }
 

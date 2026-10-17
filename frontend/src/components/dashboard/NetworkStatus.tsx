@@ -35,12 +35,22 @@ export default function NetworkStatus({
       icon: Globe,
     },
     {
-      label: "ARP",
+      label: "Certificado",
       status:
-        riskIndicators.some((r) => r.toLowerCase().includes("arp"))
-          ? "Spoofing"
-          : "Normal",
-      ok: !riskIndicators.some((r) => r.toLowerCase().includes("arp")),
+        riskIndicators.some(
+          (r) =>
+            r.toLowerCase().includes("cert") ||
+            r.toLowerCase().includes("https") ||
+            r.toLowerCase().includes("tls")
+        )
+          ? "Alerta"
+          : "Válido",
+      ok: !riskIndicators.some(
+        (r) =>
+          r.toLowerCase().includes("cert") ||
+          r.toLowerCase().includes("https") ||
+          r.toLowerCase().includes("tls")
+      ),
       icon: NetworkIcon,
     },
   ];

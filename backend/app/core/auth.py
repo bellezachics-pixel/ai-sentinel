@@ -52,9 +52,13 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
-def create_refresh_token(data: dict) -> str:
+def create_refresh_token(
+    data: dict, expires_delta: Optional[timedelta] = None
+) -> str:
     to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(days=7)
+    expire = datetime.utcnow() + (
+        expires_delta or timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    )
     to_encode.update({
         "exp": expire,
         "iat": datetime.utcnow(),
@@ -123,6 +127,18 @@ class UserInDB(BaseModel):
     is_active: bool = True
     is_admin: bool = False
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    # Inicio del trial local de 3 dias (billing). None = sin trial (usuarios
+    # creados antes de esta feature o admin); se completa al registrarse.
+    trial_start: Optional[datetime] = None
+
+
+def set_user_trial_start(user: UserInDB) -> UserInDB:
+    """Marca el inicio del trial local (3 dias) en el registro del usuario."""
+    if user.trial_start is None:
+        user.trial_start = datetime.utcnow()
+        users_db[user.username] = user
+        _persist_users()
+    return user
 
 
 # ============================================================
@@ -199,6 +215,14 @@ async def get_current_user(
 
     payload = decode_token(credentials.credentials)
 
+    # Reject non-access tokens (e.g. refresh tokens must not work as bearer tokens)
+    if payload.get("type", "access") != "access":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Tipo de token invalido: se requiere un token de acceso",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     # Check blacklist
     jti = payload.get("jti")
     if jti and is_token_revoked(jti):
@@ -252,11 +276,26 @@ async def require_analysis_access(
     return user
 
 
+def is_admin_user(user: UserInDB) -> bool:
+    """
+    Decide si un usuario es admin: flag is_admin o email listado en
+    ADMIN_EMAILS (config: lista separada por comas).
+    """
+    if getattr(user, "is_admin", False):
+        return True
+    emails = {
+        e.strip().lower()
+        for e in (settings.ADMIN_EMAILS or "").split(",")
+        if e.strip()
+    }
+    return bool(user.email) and user.email.lower() in emails
+
+
 async def require_admin(
     user: UserInDB = Depends(require_auth),
 ) -> UserInDB:
     """Requiere rol de administrador."""
-    if not user.is_admin:
+    if not is_admin_user(user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Se requieren permisos de administrador",
