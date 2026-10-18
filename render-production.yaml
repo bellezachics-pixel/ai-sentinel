@@ -31,10 +31,10 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1
     healthCheckPath: /api/v1/health
-    disks:
-      - name: guardiaflow-data
-        mountPath: /var/data
-        sizeGB: 1
+    disk:
+      name: guardiaflow-data
+      mountPath: /var/data
+      sizeGB: 1
     envVars:
       - key: PYTHON_VERSION
         value: "3.11.0"
