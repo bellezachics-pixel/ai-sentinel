@@ -24,4 +24,6 @@ pytesseract>=0.3.10
 pytest>=8.0.0
 
 # Pagos (SOLO Stripe TEST mode; jamas claves live en este repo)
-stripe>=16.0.0
+# Pin <9: el codigo de billing usa la API clasica (stripe.error, .get() en
+# listados). stripe>=9 elimino esas interfaces y rompe el checkout (500).
+stripe==7.14.0
