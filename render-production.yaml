@@ -1,0 +1,80 @@
+# ============================================================
+# GUARDIA FLOW — Render Blueprint (PRODUCCIÓN)
+# Fecha: 2026-10-18 · Preparado por Kimi. NO APLICADO AÚN.
+#
+# ⚠️ ESTADO: PENDIENTE DE AUTORIZACIÓN FINAL DE GABIOTITA.
+# Este archivo NO está vinculado a ningún Blueprint del dashboard.
+# Activarlo requiere, en orden:
+#   1. Tarjeta de pago válida en Render (hoy hay aviso "Payment failed").
+#   2. Dashboard → New → Blueprint → repo ai-sentinel → elegir ESTE archivo.
+#   3. Pegar las claves Stripe LIVE en los campos sync:false (Gabiotita).
+#   4. Conectar DNS de guardiaflow.com (apuntar al frontend).
+# Costo al aplicar: backend Starter US$7/mes + disco 1 GB US$0.25/mes.
+# El frontend arranca en plan FREE (se puede subir a Starter +US$7 luego).
+#
+# DIFERENCIAS CON STAGING (render-staging.yaml):
+#   - Backend en plan starter (siempre activo, admite disco y SSH).
+#   - DISCO PERSISTENTE de 1 GB montado en /var/data: los 4 JSON
+#     (users, token_blacklist, billing, history) sobreviven reinicios.
+#   - DATA_DIR=/var/data apunta los stores al disco.
+#   - Sin STAGING_PASSWORD (el sitio es público: son las clientas).
+#   - STRIPE MODO LIVE: las claves se pegan a mano, nunca en el repo.
+# ============================================================
+
+services:
+  - type: web
+    name: guardiaflow-backend
+    runtime: python
+    plan: starter
+    region: oregon
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1
+    healthCheckPath: /api/v1/health
+    disks:
+      - name: guardiaflow-data
+        mountPath: /var/data
+        sizeGB: 1
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.0"
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: false
+      - key: DATA_DIR
+        value: /var/data
+      - key: SECRET_KEY
+        generateValue: true
+      - key: FRONTEND_URL
+        value: https://guardiaflow.com
+      - key: REQUIRE_AUTH_FOR_ANALYSIS
+        value: true
+      - key: ALLOWED_ORIGINS
+        value: "https://guardiaflow.com,https://www.guardiaflow.com"
+      # Stripe MODO LIVE. Gabiotita las pega en el dashboard; nunca en el repo.
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_PRICE_ID
+        sync: false
+      - key: ADMIN_EMAILS
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+
+  - type: web
+    name: guardiaflow-frontend
+    runtime: node
+    plan: free
+    region: oregon
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: "20.11.0"
+      - key: NEXT_PUBLIC_API_URL
+        value: https://guardiaflow-backend.onrender.com
