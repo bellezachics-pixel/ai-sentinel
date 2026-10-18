@@ -8,6 +8,7 @@ Autenticacion JWT - Guardia Flow
 from __future__ import annotations
 
 import os
+import threading
 import time
 import uuid
 import hashlib
@@ -22,6 +23,11 @@ from pydantic import BaseModel, Field, validator
 
 from app.core.config import settings
 from app.core.user_store import get_users, set_users, add_to_blacklist, is_blacklisted
+
+# Protege las mutaciones del dict compartido users_db (FastAPI ejecuta
+# endpoints "def" en un threadpool: varios hilos pueden registrar usuarias
+# a la vez). RLock: reentrante para no bloquear _load_users -> _persist_users.
+_users_lock = threading.RLock()
 
 
 # ============================================================
@@ -172,8 +178,9 @@ def _load_users():
 
 
 def _persist_users():
-    data = {u.username: u.model_dump() for u in users_db.values()}
-    set_users(data)
+    with _users_lock:
+        data = {u.username: u.model_dump() for u in users_db.values()}
+        set_users(data)
 
 
 _load_users()
@@ -184,8 +191,9 @@ def get_user(username: str) -> Optional[UserInDB]:
 
 
 def create_user(user: UserInDB):
-    users_db[user.username] = user
-    _persist_users()
+    with _users_lock:
+        users_db[user.username] = user
+        _persist_users()
 
 
 # ============================================================

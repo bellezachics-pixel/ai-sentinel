@@ -6,6 +6,8 @@ from __future__ import annotations
 
 import json
 import os
+import tempfile
+import threading
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -23,6 +25,8 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 USERS_FILE = DATA_DIR / "users.json"
 BLACKLIST_FILE = DATA_DIR / "token_blacklist.json"
 
+_save_lock = threading.Lock()
+
 
 def _load_json(path: Path) -> dict:
     if not path.exists():
@@ -35,9 +39,23 @@ def _load_json(path: Path) -> dict:
 
 
 def _save_json(path: Path, data: dict):
+    # Escritura atomica (tmp + os.replace) y thread-safe, igual que
+    # billing_store/history_store: un fallo a mitad de la escritura nunca
+    # deja el archivo truncado, y lectores concurrentes ven el estado
+    # anterior o el nuevo, nunca uno corrupto.
     path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, default=str)
+    with _save_lock:
+        fd, tmp = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2, default=str)
+            os.replace(tmp, path)
+        except BaseException:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+            raise
 
 
 def load_users() -> dict:
