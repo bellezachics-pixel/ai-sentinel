@@ -64,6 +64,45 @@ def normalize_public_http_url(raw_url: str) -> tuple[str | None, dict | None]:
     return url, None
 
 
+# Maximo de redirecciones seguidas en fetch con validacion anti-SSRF.
+MAX_SAFE_REDIRECTS = 5
+
+
+async def safe_http_get(url: str, timeout: float = 10.0, max_redirects: int = MAX_SAFE_REDIRECTS):
+    """
+    GET HTTP(S) con redirecciones validadas SALTO A SALTO.
+
+    Cada destino intermedio pasa por normalize_public_http_url antes de
+    conectar: una redireccion hacia una IP privada, de metadatos cloud o
+    local es rechazada antes de la conexion. Cierra el vector SSRF por
+    redireccion (servidor publico que redirige hacia la red interna).
+    """
+    import httpx
+
+    current = url
+    async with httpx.AsyncClient(
+        timeout=timeout, follow_redirects=False, verify=True
+    ) as client:
+        for _ in range(max_redirects + 1):
+            validated, finding = normalize_public_http_url(current)
+            if not validated:
+                raise ValueError(
+                    f"Redireccion bloqueada por seguridad: "
+                    f"{(finding or {}).get('description', 'destino no permitido')}"
+                )
+            resp = await client.get(validated)
+            if resp.status_code in (301, 302, 303, 307, 308):
+                location = resp.headers.get("location")
+                if not location:
+                    return resp
+                from urllib.parse import urljoin
+
+                current = urljoin(validated, location)
+                continue
+            return resp
+    raise ValueError(f"Demasiadas redirecciones (mas de {max_redirects})")
+
+
 def validate_public_network_target(target: str) -> str:
     """
     Validate that a network-scan target is safe to connect to (SSRF guard).

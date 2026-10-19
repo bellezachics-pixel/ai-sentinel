@@ -544,20 +544,20 @@ def test_admin_refund_con_sesion_cs_resuelve_y_registra_localmente(
 
 
 def test_is_admin_user_por_email_admin_emails(client, auth_client, monkeypatch):
-    # Sin is_admin ni ADMIN_EMAILS: no es admin (403).
+    # El correo en ADMIN_EMAILS YA NO otorga admin: el registro no verifica
+    # propiedad del correo (hallazgo de seguridad 2026-10-19). Solo el flag
+    # interno is_admin concede el rol.
     client, user = auth_client
     u = auth_core.get_user(user["username"])
     assert auth_core.is_admin_user(u) is False
-    # Con su email en ADMIN_EMAILS: pasa el chequeo de admin (cae en 503
-    # por falta de pasarela, no en 403).
     monkeypatch.setattr(settings, "ADMIN_EMAILS", f"otro@example.com,{u.email}")
-    assert auth_core.is_admin_user(u) is True
+    assert auth_core.is_admin_user(u) is False
     resp = client.post(
         f"{BILLING}/admin/refund",
         json={"payment_id": "ch_x"},
         headers=user["headers"],
     )
-    assert resp.status_code == 503
+    assert resp.status_code == 403
 
 
 # ============================================================
@@ -623,3 +623,70 @@ def test_payments_lista_cargos_mockeados_mas_recientes_primero(
             "date",
             "receipt_url",
         }
+
+
+# ============================================================
+# Regresion de seguridad 2026-10-19 (hallazgos P1 externos)
+# ============================================================
+
+def _checkout_event(event_id: str, user_id: str) -> dict:
+    return {
+        "id": event_id,
+        "type": "checkout.session.completed",
+        "data": {
+            "object": {
+                "id": "cs_test_1",
+                "customer": "cus_test_1",
+                "subscription": "sub_test_1",
+                "metadata": {"user_id": user_id},
+            }
+        },
+    }
+
+
+def test_webhook_error_procesamiento_devuelve_500(client, stripe_test, auth_client, monkeypatch):
+    # Hallazgo: la ruta confirmaba 'received' aunque fallara el procesamiento.
+    # Ahora un fallo debe responder 500 para que Stripe reintente.
+    client, user = auth_client
+    user_id = _user_id(user["username"])
+
+    def _boom(event):
+        raise OSError("disco lleno simulado")
+
+    monkeypatch.setattr(
+        "app.api.routes.billing._handle_webhook_event", _boom
+    )
+    resp = _post_webhook_mocked(client, _checkout_event("evt_falla_1", user_id))
+    assert resp.status_code == 500
+    # El evento NO queda marcado como procesado: Stripe debe poder reintentar.
+    assert billing_store.has_event("evt_falla_1") is False
+
+
+def test_webhook_checkout_no_resucita_cancelado(client, stripe_test, auth_client):
+    # Hallazgo: un checkout.session.completed (incluso reentregado viejo)
+    # pisaba el estado a 'trialing'. Estados terminales/de pago se respetan.
+    client, user = auth_client
+    user_id = _user_id(user["username"])
+    billing_store.upsert_record(user_id, status="canceled")
+
+    resp = _post_webhook_mocked(client, _checkout_event("evt_replay_1", user_id))
+    assert resp.status_code == 200
+    assert billing_store.get_record(user_id)["status"] == "canceled"
+
+
+def test_webhook_evento_duplicado_no_reprocesa(client, stripe_test, auth_client):
+    # Dedup real: la segunda entrega del mismo evento se confirma pero no
+    # ejecuta de nuevo el manejador (un estado posterior no se revierte).
+    client, user = auth_client
+    user_id = _user_id(user["username"])
+
+    resp = _post_webhook_mocked(client, _checkout_event("evt_dup_1", user_id))
+    assert resp.status_code == 200
+    assert billing_store.get_record(user_id)["status"] == "trialing"
+
+    billing_store.upsert_record(user_id, status="canceled")
+
+    resp2 = _post_webhook_mocked(client, _checkout_event("evt_dup_1", user_id))
+    assert resp2.status_code == 200
+    assert resp2.json()["duplicate"] is True
+    assert billing_store.get_record(user_id)["status"] == "canceled"

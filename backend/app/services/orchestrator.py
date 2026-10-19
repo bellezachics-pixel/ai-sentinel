@@ -18,7 +18,7 @@ from app.models.schemas import (
     ThreatIntelResult,
 )
 from app.core.config import settings
-from app.core.url_safety import normalize_public_http_url
+from app.core.url_safety import normalize_public_http_url, safe_http_get
 from app.core import history_store
 from app.services.risk_engine import risk_engine
 
@@ -173,12 +173,12 @@ class AnalysisOrchestrator:
 
         # Content analysis (fetch page content) - SSRF-safe
         content_result = {"score": 0, "findings": []}
+        content_score: float | None = None  # None = "no analizado"
         if safe_url and not safety_finding:
             try:
-                import httpx
-                async with httpx.AsyncClient(timeout=10, follow_redirects=True, verify=True) as client:
-                    resp = await client.get(safe_url)
-                    content_result = await self.content_analyzer.analyze_content(resp.text, "html")
+                resp = await safe_http_get(safe_url, timeout=10)
+                content_result = await self.content_analyzer.analyze_content(resp.text, "html")
+                content_score = content_result.get("score", 0)
             except Exception:
                 pass
 
@@ -186,9 +186,9 @@ class AnalysisOrchestrator:
         intel_scores = [r.get("score", 0) for r in intel_results] if intel_results else []
         risk_score = risk_engine.calculate_risk(
             url_score=url_result.get("score", 0),
-            content_score=content_result.get("score", 0),
+            content_score=content_score,
             header_score=header_result.get("score", 0),
-            network_score=network_result.get("score", 0),
+            network_score=network_result.get("score", 0) if deep_scan else None,
             threat_intel_scores=intel_scores,
         )
 

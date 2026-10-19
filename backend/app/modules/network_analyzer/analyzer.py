@@ -367,9 +367,13 @@ class NetworkAnalyzer:
                 })
 
             # HTTP-level proxy detection
+            # Sin seguir redirecciones: evita el vector SSRF por salto
+            # (el objetivo ya se valido, pero el destino de una
+            # redireccion no) y los headers de interes estan en la
+            # primera respuesta de todos modos.
             try:
                 async with httpx.AsyncClient(
-                    timeout=15.0, follow_redirects=True, verify=True
+                    timeout=15.0, follow_redirects=False, verify=True
                 ) as client:
                     resp = await client.head(f"https://{hostname}")
                     headers_lower = {k.lower(): v for k, v in resp.headers.items()}

@@ -324,6 +324,18 @@ def _handle_webhook_event(event: dict):
         if not user_id:
             logger.warning("Webhook: checkout.session.completed sin metadata.user_id")
             return
+        # No resucitar estados protegidos: una reentrega antigua de este
+        # evento NO puede revertir una cancelacion/reembolso ni rebajar
+        # una suscripcion activa o morosa a "trialing".
+        existing = billing_store.get_record(user_id)
+        current_status = (existing.get("status") or "").lower()
+        if current_status in billing_store.CHECKOUT_PROTECTED_STATUSES:
+            logger.info(
+                "Webhook: checkout.session.completed ignorado para %s "
+                "(estado actual protegido: %s)",
+                user_id, current_status,
+            )
+            return
         billing_store.upsert_record(
             user_id,
             stripe_customer_id=data.get("customer"),
@@ -408,10 +420,26 @@ async def stripe_webhook(request: Request):
             detail="payload_webhook_invalido",
         )
 
+    # Deduplicacion: Stripe reentrega eventos (timeouts, reintentos, o
+    # configuraciones con entrega duplicada). Un evento ya procesado se
+    # confirma de nuevo sin reejecutarlo (idempotencia real).
+    event_id = event.get("id")
+    if event_id and billing_store.has_event(event_id):
+        return {"received": True, "duplicate": True}
+
     try:
         _handle_webhook_event(event)
     except Exception:
-        logger.exception("Webhook: error al procesar el evento")
+        logger.exception("Webhook: error al procesar el evento %s", event_id)
+        # No confirmar recepcion si el procesamiento fallo: Stripe reintenta
+        # la entrega y el estado no se pierde en silencio.
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="error_procesando_evento",
+        )
+
+    if event_id:
+        billing_store.record_event(event_id)
 
     return {"received": True}
 

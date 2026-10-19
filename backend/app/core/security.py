@@ -187,10 +187,14 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         return response
 
     def _get_client_ip(self, request: Request) -> str:
-        forwarded = request.headers.get("X-Forwarded-For")
-        if forwarded:
-            return forwarded.split(",")[0].strip()
-        return request.client.host if request.client else "unknown"
+        # NO confiar en X-Forwarded-For: una cabecera que el cliente puede
+        # variar a voluntad romperia la identidad del limitador. En Render
+        # la IP de la conexion (client.host) YA es la IP real del cliente
+        # (el proxy de Render termina la conexion directamente), asi que
+        # usarla tambien unifica el criterio con la proteccion anti
+        # fuerza bruta de login.
+        client = request.client
+        return client.host if client and client.host else "unknown"
 
 
 # ============================================================

@@ -8,8 +8,9 @@ Reglas de negocio:
   solo el trial local otorga acceso y /billing/checkout responde 503.
 
 El cliente Stripe se inicializa de forma LAZY (nunca al importar el modulo
-ni al arrancar la app sin clave). SOLO se soporta modo TEST: jamas pongas
-una clave live de Stripe en estas variables.
+ni al arrancar la app sin clave). Soporta modo TEST y modo LIVE segun la
+clave configurada en STRIPE_SECRET_KEY; el webhook valida siempre la firma
+con STRIPE_WEBHOOK_SECRET del entorno correspondiente.
 """
 from __future__ import annotations
 

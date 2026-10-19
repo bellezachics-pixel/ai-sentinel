@@ -286,17 +286,17 @@ async def require_analysis_access(
 
 def is_admin_user(user: UserInDB) -> bool:
     """
-    Decide si un usuario es admin: flag is_admin o email listado en
-    ADMIN_EMAILS (config: lista separada por comas).
+    Decide si un usuario es admin.
+
+    SOLO el flag interno `is_admin` del registro de usuario otorga el rol
+    (se asigna por un proceso controlado: usuario admin sembrado con
+    ADMIN_PASSWORD o edicion directa del almacen por la propietaria).
+
+    La concesion por correo (ADMIN_EMAILS) fue eliminada: el registro no
+    verifica propiedad del correo, asi que cualquiera podria registrar una
+    direccion autorizada y obtener permisos administrativos.
     """
-    if getattr(user, "is_admin", False):
-        return True
-    emails = {
-        e.strip().lower()
-        for e in (settings.ADMIN_EMAILS or "").split(",")
-        if e.strip()
-    }
-    return bool(user.email) and user.email.lower() in emails
+    return bool(getattr(user, "is_admin", False))
 
 
 async def require_admin(
