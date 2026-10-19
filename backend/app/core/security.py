@@ -10,6 +10,7 @@ Security Middleware - Blindaje completo del backend Guardia Flow
 from __future__ import annotations
 
 import ipaddress
+import os
 import time
 import hashlib
 import re
@@ -29,29 +30,54 @@ def _is_private_host(host: str) -> bool:
         return False
 
 
+def _valid_ip(value: str) -> bool:
+    try:
+        ipaddress.ip_address(value)
+        return True
+    except ValueError:
+        return False
+
+
+# SOLO activar en despliegues detras de un proxy que controle estas
+# cabeceras (Render: el borde las establece y el cliente externo no puede
+# falsificarlas). En exposicion directa (Docker local, uvicorn sin proxy)
+# deben ignorarse: si no, cualquier clienta podria inyectar True-Client-IP
+# y cambiar su identidad para el limitador y el anti fuerza bruta.
+# Se configura con TRUST_PROXY_HEADERS=true en Render (render-*.yaml).
+TRUST_PROXY_HEADERS = os.environ.get("TRUST_PROXY_HEADERS", "").lower() in (
+    "1",
+    "true",
+    "yes",
+)
+
+
 def get_client_ip(request: Request) -> str:
-    """IP real de la clienta, única fuente de verdad para limitador y anti fuerza bruta.
+    """IP real de la clienta, unica fuente de verdad para limitador y login.
 
-    Prioridad:
-    1. Cabecera ``True-Client-IP``: la inyecta el borde de Render y la
-       clienta NO puede falsificarla (el proxy la establece al terminar la
-       conexión). Sin esto, en Render todas las clientas comparten la IP del
-       proxy y 5 intentos fallidos bloquean a TODO EL MUNDO.
-    2. Si la conexión viene de una IP privada (proxy local), el ÚLTIMO valor
-       de ``X-Forwarded-For`` (el añadido por el proxy más cercano).
-    3. IP de la conexión (client.host).
+    Modo proxy confiable (TRUST_PROXY_HEADERS=true, Render):
+      True-Client-IP validada como IP > primer valor de X-Forwarded-For
+      (el que anade el borde con la IP original de la visitante).
+    Modo directo (default): XFF solo si la conexion viene de una IP
+      privada (proxy local, p.ej. docker-compose), tomando el ULTIMO valor.
+    Fallback siempre: IP de la conexion (client.host).
     """
-    true_ip = request.headers.get("true-client-ip")
-    if true_ip and true_ip.strip():
-        return true_ip.strip()
-
     client = request.client
     host = client.host if client and client.host else ""
-    if host and _is_private_host(host):
+
+    if TRUST_PROXY_HEADERS:
+        true_ip = (request.headers.get("true-client-ip") or "").strip()
+        if true_ip and _valid_ip(true_ip):
+            return true_ip
+        xff = request.headers.get("x-forwarded-for")
+        if xff:
+            first = xff.split(",")[0].strip()
+            if first and _valid_ip(first):
+                return first
+    elif host and _is_private_host(host):
         xff = request.headers.get("x-forwarded-for")
         if xff:
             last = xff.split(",")[-1].strip()
-            if last:
+            if last and _valid_ip(last):
                 return last
     return host or "unknown"
 

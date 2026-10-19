@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import ipaddress
 import socket
 from urllib.parse import urlparse
@@ -67,6 +68,28 @@ def normalize_public_http_url(raw_url: str) -> tuple[str | None, dict | None]:
 # Maximo de redirecciones seguidas en fetch con validacion anti-SSRF.
 MAX_SAFE_REDIRECTS = 5
 
+# Limite de bytes DURANTE la descarga (contenido descomprimido): corta la
+# transferencia al llegar, no despues de descargar todo.
+MAX_DOWNLOAD_BYTES = 2_000_000
+
+
+async def _read_limited(response, max_bytes: int = MAX_DOWNLOAD_BYTES) -> bytes:
+    """Lee el cuerpo de una respuesta en streaming, cortando a max_bytes.
+
+    httpx descarga y descomprime chunk a chunk: un servidor malicioso no
+    puede inflar la memoria mandando cientos de MB (el recorte posterior
+    de 'resp.text[:2MB]' limitaba el trabajo de regex, pero no la red/RAM).
+    """
+    chunks: list[bytes] = []
+    total = 0
+    async for chunk in response.aiter_bytes():
+        if total >= max_bytes:
+            break
+        take = chunk[: max_bytes - total]
+        chunks.append(take)
+        total += len(take)
+    return b"".join(chunks)
+
 
 async def safe_http_get(url: str, timeout: float = 10.0, max_redirects: int = MAX_SAFE_REDIRECTS):
     """
@@ -76,8 +99,8 @@ async def safe_http_get(url: str, timeout: float = 10.0, max_redirects: int = MA
     conectar: una redireccion hacia una IP privada, de metadatos cloud o
     local es rechazada antes de la conexion. Cierra el vector SSRF por
     redireccion (servidor publico que redirige hacia la red interna).
+    La descarga se corta a MAX_DOWNLOAD_BYTES durante la transferencia.
     """
-    import asyncio
     import httpx
 
     current = url
@@ -93,17 +116,54 @@ async def safe_http_get(url: str, timeout: float = 10.0, max_redirects: int = MA
                     f"Redireccion bloqueada por seguridad: "
                     f"{(finding or {}).get('description', 'destino no permitido')}"
                 )
-            resp = await client.get(validated)
+            resp = await client.send(
+                client.build_request("GET", validated), stream=True
+            )
             if resp.status_code in (301, 302, 303, 307, 308):
                 location = resp.headers.get("location")
+                await resp.aclose()
                 if not location:
                     return resp
                 from urllib.parse import urljoin
 
                 current = urljoin(validated, location)
                 continue
-            return resp
+            body = await _read_limited(resp)
+            await resp.aclose()
+            return _BufferedResponse(resp, body)
     raise ValueError(f"Demasiadas redirecciones (mas de {max_redirects})")
+
+
+class _BufferedResponse:
+    """Compatibilidad minima con la interfaz de respuesta que usan los
+    analizadores: status_code, headers y .text (decodificado) ya recortado
+    al limite de descarga."""
+
+    def __init__(self, response, body: bytes):
+        self.status_code = response.status_code
+        self.headers = response.headers
+        self._text: str | None = None
+        self._body = body
+
+    @property
+    def text(self) -> str:
+        if self._text is None:
+            enc = "utf-8"
+            content_type = self.headers.get("content-type", "")
+            for part in content_type.split(";"):
+                part = part.strip()
+                if part.lower().startswith("charset="):
+                    enc = part.split("=", 1)[1].strip() or "utf-8"
+            self._text = self._body.decode(enc, errors="replace")
+        return self._text
+
+    def json(self):
+        import json as _json
+
+        return _json.loads(self.text)
+
+    def close(self):
+        return None
 
 
 def validate_public_network_target(target: str) -> str:

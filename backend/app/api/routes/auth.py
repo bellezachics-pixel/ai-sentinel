@@ -30,6 +30,7 @@ from app.core.auth import (
     is_token_revoked,
     get_user,
     create_user,
+    create_user_unique,
     require_auth,
     set_user_trial_start,
     users_db,
@@ -108,36 +109,35 @@ def _create_oauth_state() -> str:
 @router.post("/register", response_model=TokenResponse)
 async def register(request: Request, user_data: UserCreate):
     """Registrar nuevo usuario."""
-    if get_user(user_data.username):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="El nombre de usuario ya existe",
-        )
-
-    # Email normalizado a minusculas: evita duplicados por mayusculas
-    # (Gabi@correo.com vs gabi@correo.com) y unifica el criterio de busqueda.
-    normalized_email = user_data.email.strip().lower()
-
-    # Check if email already used (case-insensitive)
-    from app.core.auth import users_db
-    for u in users_db.values():
-        if u.email.lower() == normalized_email:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="El email ya esta registrado",
-            )
-
-    # bcrypt es costoso a proposito: correrlo fuera del event loop para no
-    # congelar las demas solicitudes del servidor.
+    # 1) Todo lo costoso/blocking PRIMERO, antes de cualquier decision
+    #    sobre unicidad: el hash va a un hilo (no congela el servidor) y
+    #    NO hay ningun await entre la comprobacion y la insercion.
     hashed = await asyncio.to_thread(hash_password, user_data.password)
 
-    user = UserInDB(
+    # 2) Email normalizado a minusculas: evita duplicados por mayusculas
+    #    (Gabi@correo.com vs gabi@correo.com) y unifica el criterio.
+    normalized_email = user_data.email.strip().lower()
+
+    # 3) Comprobacion + insercion ATOMICA (mismo lock, sin awaits en medio):
+    #    dos registros simultaneos con el mismo nombre ya no pueden
+    #    sobrescribirse entre si.
+    candidate = UserInDB(
         id=str(uuid.uuid4()),
         username=user_data.username,
         email=normalized_email,
         hashed_password=hashed,
     )
-    create_user(user)
+    created, reason = create_user_unique(candidate)
+    if not created:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "El nombre de usuario ya existe"
+                if reason == "username"
+                else "El email ya esta registrado"
+            ),
+        )
+    user = candidate
     set_user_trial_start(user)  # trial local de 3 dias desde el registro
 
     access_token = create_access_token(data={"sub": user.username})

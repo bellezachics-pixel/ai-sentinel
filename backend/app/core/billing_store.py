@@ -108,6 +108,12 @@ def get_record_by_customer(stripe_customer_id: str) -> tuple[str, dict] | tuple[
     return None, None
 
 
+def all_records() -> dict[str, dict]:
+    """Copia de todos los registros (para reconciliaciones administrativas)."""
+    with _lock:
+        return {uid: dict(rec) for uid, rec in _get().items()}
+
+
 def upsert_record(user_id: str, **fields):
     """Crea o actualiza campos del registro de facturacion del usuario."""
     if not user_id:

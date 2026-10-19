@@ -67,11 +67,19 @@ class _RespuestaRedirect:
     def __init__(self, location: str):
         self.headers = {"location": location}
 
+    async def aclose(self):
+        return None
+
 
 class _RespuestaOk:
     status_code = 200
     headers: dict = {}
-    text = "<html>ok</html>"
+
+    async def aiter_bytes(self):
+        yield b"<html>ok</html>"
+
+    async def aclose(self):
+        return None
 
 
 def _dns_publico(host, *args, **kwargs):
@@ -89,7 +97,7 @@ def _dns_publico(host, *args, **kwargs):
 
 def test_safe_http_get_permite_redireccion_publica():
     async def _run():
-        with patch("httpx.AsyncClient.get", new=AsyncMock()) as m, patch(
+        with patch("httpx.AsyncClient.send", new=AsyncMock()) as m, patch(
             "app.core.url_safety.socket.getaddrinfo", side_effect=_dns_publico
         ):
             m.side_effect = [
@@ -106,7 +114,7 @@ def test_safe_http_get_permite_redireccion_publica():
 
 def test_safe_http_get_bloquea_redireccion_a_interna():
     async def _run():
-        with patch("httpx.AsyncClient.get", new=AsyncMock()) as m, patch(
+        with patch("httpx.AsyncClient.send", new=AsyncMock()) as m, patch(
             "app.core.url_safety.socket.getaddrinfo", side_effect=_dns_publico
         ):
             m.side_effect = [
@@ -122,7 +130,7 @@ def test_safe_http_get_bloquea_redireccion_a_interna():
 
 def test_safe_http_get_bloquea_redireccion_a_localhost():
     async def _run():
-        with patch("httpx.AsyncClient.get", new=AsyncMock()) as m, patch(
+        with patch("httpx.AsyncClient.send", new=AsyncMock()) as m, patch(
             "app.core.url_safety.socket.getaddrinfo", side_effect=_dns_publico
         ):
             m.side_effect = [_RespuestaRedirect("http://localhost:8080/admin")]

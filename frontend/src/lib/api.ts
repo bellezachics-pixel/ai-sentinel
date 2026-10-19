@@ -273,10 +273,16 @@ async function apiFetch<T>(
     headers,
   });
 
-  // Un 401 en rutas de autenticacion (login/register) NO significa sesion
-  // expirada: son credenciales incorrectas. Mostrar el error tal cual sin
-  // recargar la pagina ni intentar refrescar el token.
-  const isAuthEndpoint = endpoint.startsWith("/api/v1/auth/");
+  // Un 401 en login/registro/refresh NO significa sesion expirada: son
+  // credenciales invalidas o un refresh rechazado. Otras rutas /auth como
+  // /me SI deben renovar el token cuando expira (exclusion FINA, no todo
+  // el prefijo: excluirlo entero rompia la renovacion silenciosa de sesion).
+  const NO_REFRESH_PATHS = [
+    "/api/v1/auth/login",
+    "/api/v1/auth/register",
+    "/api/v1/auth/refresh",
+  ];
+  const isAuthEndpoint = NO_REFRESH_PATHS.includes(endpoint);
 
   if (res.status === 401 && !retriedAfterRefresh && !isAuthEndpoint) {
     const newToken = await refreshToken();
@@ -306,10 +312,9 @@ async function apiFormData(endpoint: string, formData: FormData) {
   let res = await send(token);
 
   // Un 401 en una subida significa token expirado: renovar UNA vez y repetir.
-  // Las subidas son rutas de analisis (no de auth), asi que el flujo de
-  // refresco aplica igual que en apiFetch.
-  const isAuthEndpoint = endpoint.startsWith("/api/v1/auth/");
-  if (res.status === 401 && !isAuthEndpoint) {
+  // Las subidas son rutas de analisis (nunca de auth), asi que aqui el
+  // flujo de refresco siempre aplica.
+  if (res.status === 401) {
     const newToken = await refreshToken();
     if (newToken) {
       res = await send(newToken);

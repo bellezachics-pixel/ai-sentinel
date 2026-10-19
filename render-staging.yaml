@@ -33,6 +33,10 @@ services:
         value: development
       - key: DEBUG
         value: false
+      # Detras del proxy de Render: confiar True-Client-IP/XFF (ver comentario
+      # en render-production.yaml). Default seguro en exposicion directa: false.
+      - key: TRUST_PROXY_HEADERS
+        value: "true"
       - key: SECRET_KEY
         generateValue: true
       - key: FRONTEND_URL

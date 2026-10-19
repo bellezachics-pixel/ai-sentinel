@@ -207,6 +207,30 @@ def create_user(user: UserInDB):
         _persist_users()
 
 
+def create_user_unique(user: UserInDB) -> tuple[bool, Optional[str]]:
+    """Crea el usuario SOLO si ni el username ni el email existen.
+
+    La verificacion y la insercion ocurren bajo el MISMO lock, sin awaits
+    en medio: dos registros simultaneos con el mismo nombre ya no pueden
+    superar ambos la comprobacion (race condition que dejaba dos tokens
+    apuntando a la ultima identidad guardada).
+
+    Returns:
+        (creado, motivo): (True, None) si se creo; (False, "username"|"email")
+        si ya existia alguno.
+    """
+    with _users_lock:
+        if user.username in users_db:
+            return False, "username"
+        normalized = user.email.strip().lower()
+        for existing in users_db.values():
+            if existing.email.lower() == normalized:
+                return False, "email"
+        users_db[user.username] = user
+        _persist_users()
+        return True, None
+
+
 # ============================================================
 # Token Blacklist
 # ============================================================

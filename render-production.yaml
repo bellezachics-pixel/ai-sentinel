@@ -44,6 +44,11 @@ services:
         value: false
       - key: DATA_DIR
         value: /var/data
+      # Detras del proxy de Render: confiar True-Client-IP/XFF (el borde las
+      # controla; la clienta externa no puede falsificarlas). En exposicion
+      # directa (Docker local) NO activar: default seguro = false.
+      - key: TRUST_PROXY_HEADERS
+        value: "true"
       - key: SECRET_KEY
         generateValue: true
       - key: FRONTEND_URL
