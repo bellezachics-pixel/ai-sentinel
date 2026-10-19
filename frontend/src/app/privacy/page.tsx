@@ -14,6 +14,10 @@ export default function PrivacyPage() {
       updated="17 de octubre de 2026"
       sections={[
         {
+          heading: "El responsable del tratamiento de datos",
+          body: "Responsable del tratamiento: [Nombre legal o razón social], domiciliado en [Dirección fiscal completa], [País]. Identificación fiscal: [RFC / ID fiscal]. Delegado de protección de datos / contacto de privacidad: soporte@guardiaflow.com.",
+        },
+        {
           heading: "Qué datos guardamos",
           body: "Guardamos los datos mínimos necesarios para operar el servicio: tu correo electrónico de cuenta, tu contraseña (almacenada únicamente como hash, nunca en texto plano), la fecha de registro y un historial de los análisis que realizas (tipo de análisis e indicador analizado, por ejemplo la URL o el asunto de un correo) para mostrarte tu panel y recomendaciones.",
         },

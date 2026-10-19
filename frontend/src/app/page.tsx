@@ -52,7 +52,7 @@ const THREATS = [
   {
     icon: Globe,
     title: "Suplantación de marcas",
-    text: "Identifica dominios imitadores, homoglifos y páginas que se hacen pasar por marcas conocidas.",
+    text: "Identifica páginas que se hacen pasar por marcas conocidas, incluidos dominios con letras cambiadas que imitan las direcciones reales (homoglifos).",
   },
   {
     icon: QrCode,
@@ -80,7 +80,7 @@ const TOOLS = [
   {
     icon: Link2,
     title: "Análisis de enlaces y URLs",
-    text: "Señales de phishing, homoglifos, impersonación de marcas y reputación del dominio.",
+    text: "Señales de phishing, letras cambiadas que imitan dominios reales (homoglifos), páginas que fingen ser otras marcas y reputación del sitio.",
   },
   {
     icon: MailWarning,
@@ -105,12 +105,12 @@ const TOOLS = [
   {
     icon: Fingerprint,
     title: "Verificación de identidad",
-    text: "Consulta filtraciones de datos con el método k-anonimato: tu contraseña nunca sale de tu dispositivo.",
+    text: "Consulta filtraciones de datos con el método k-anonimato, una forma de comparar tu contraseña sin enviarla: tu contraseña nunca sale de tu dispositivo.",
   },
   {
     icon: Server,
     title: "Chequeo de servidores y redes",
-    text: "Verifica certificados TLS, HTTPS y puertos de un objetivo desde los servidores de Guardia Flow.",
+    text: "Verifica la conexión segura de un sitio (su certificado TLS, el candado de seguridad de los navegadores), el HTTPS y sus puertos, desde los servidores de Guardia Flow.",
   },
   {
     icon: BrainCircuit,
@@ -137,8 +137,8 @@ const LIMITS = [
   },
   {
     icon: Wifi,
-    title: "La detección en tu red local requiere el agente opcional",
-    text: "El monitoreo de ARP/DNS dentro de tu propia red (Wi-Fi de casa u oficina) necesita nuestro agente local opcional. La versión web analiza objetivos desde los servidores de Guardia Flow.",
+    title: "La detección en tu red local requiere un programa opcional",
+    text: "Vigilar tu propia red Wi-Fi (quién está conectado y si alguien desvía tu navegación) requiere un pequeño agente opcional instalado en tu dispositivo; solo se instala si tú lo activas. Todo lo demás funciona desde el navegador sin instalar nada.",
   },
   {
     icon: Lock,
@@ -210,8 +210,8 @@ export default function Home() {
             <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-slate-400 sm:text-lg">
               ¿Recibiste un enlace raro, un correo que pide tus datos o un
               código QR que no te convence? Pégalo en Guardia Flow y en segundos
-              sabrás si es una amenaza y qué hacer al respecto. Sin tecnicismos,
-              sin alarmismo.
+              te decimos qué tan riesgoso parece y qué conviene hacer. Sin
+              tecnicismos, sin alarmismo.
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Link
@@ -403,6 +403,63 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ---------- EJEMPLOS ---------- */}
+      <section id="ejemplos" className="border-t border-[#1e293b]/60">
+        <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="text-2xl font-bold text-white sm:text-3xl">
+              Así te ayuda en la vida real
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-slate-400 sm:text-base">
+              Escenarios cotidianos donde Guardia Flow te da una respuesta clara
+              en segundos. Ejemplos ilustrativos de cómo funciona el análisis.
+            </p>
+          </div>
+          <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-3">
+            {[
+              {
+                icon: MailWarning,
+                tag: "Correo",
+                title: "«Tu paquete está retenido»",
+                text: "Llega un correo urgente pidiendo que «actualices tus datos» para liberar un envío. Al analizarlo, Guardia Flow detecta que el remitente no coincide con la paquetería real y que el enlace lleva a una página imitadora: veredicto de alto riesgo, no ingreses tus datos.",
+              },
+              {
+                icon: QrCode,
+                tag: "Código QR",
+                title: "El QR del estacionamiento",
+                text: "Encuentras un código QR pegado sobre el oficial del estacionamiento. Guardia Flow revela que el QR apunta a un sitio recién creado que imita la pasarela de pago del lugar y pide tu tarjeta completa: señal clara de fraude.",
+              },
+              {
+                icon: MessageSquareWarning,
+                tag: "Mensaje",
+                title: "«Mamá, cambié de número»",
+                text: "Recibes un mensaje de un «familiar» que pide dinero por una emergencia. Guardia Flow evalúa el texto y lo señala como patrón típico de estafa por urgencia emocional, y te sugiere verificar llamando al número real de tu familiar.",
+              },
+            ].map((example) => (
+              <div
+                key={example.title}
+                className="rounded-xl border border-[#1e293b] bg-[#111827] p-6"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-lg border border-cyan-500/30 bg-cyan-500/10">
+                    <example.icon className="h-5 w-5 text-cyan-400" />
+                  </span>
+                  <span className="rounded-full border border-[#1e293b] px-3 py-1 text-[11px] font-medium text-slate-400">
+                    {example.tag}
+                  </span>
+                </div>
+                <h3 className="mt-4 text-sm font-semibold text-slate-100">
+                  {example.title}
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-slate-400">
+                  {example.text}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ---------- PRECIOS ---------- */}
       <section id="precios" className="scroll-mt-24 border-t border-[#1e293b]/60">
         <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
@@ -436,7 +493,7 @@ export default function Home() {
               </div>
               <ul className="mt-6 space-y-3">
                 {[
-                  "Análisis ilimitado de enlaces, correos y mensajes",
+                  "Análisis de enlaces, correos y mensajes, sin límite de uso en tu plan",
                   "Códigos QR, archivos, imágenes y audio",
                   "Verificación de filtraciones de tus datos",
                   "Chequeo de servidores e inteligencia de amenazas",
@@ -464,6 +521,12 @@ export default function Home() {
                 muestra en tu panel). Cancela antes sin ningún cargo. Renovación
                 mensual automática; cancela cuando quieras desde tu panel o
                 escribiéndonos a soporte@guardiaflow.com.
+              </p>
+              <p className="mt-2 text-xs leading-5 text-slate-600">
+                Sin límite de uso significa que no hay tope por número de
+                análisis en tu plan; como toda plataforma, aplicamos una
+                protección automática contra bots para que el servicio siga
+                rápido para todas las personas.
               </p>
               <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-500">
                 <CreditCard className="h-3.5 w-3.5" />
@@ -501,8 +564,8 @@ export default function Home() {
             La próxima estafa no te va a avisar
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-400 sm:text-base">
-            Empieza hoy tu prueba gratuita de 3 días y convierte la duda en
-            certeza cada vez que algo te parezca sospechoso.
+            Empieza hoy tu prueba gratuita de 3 días y recibe una valoración
+            clara del riesgo cada vez que algo te parezca sospechoso.
           </p>
           <Link
             href="/app"
@@ -513,7 +576,7 @@ export default function Home() {
           </Link>
           <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-slate-500">
             <Smartphone className="h-3.5 w-3.5" />
-            Funciona en computadora y celular, sin instalar nada
+            Funciona en computadora y celular, directo desde tu navegador
           </p>
         </div>
       </section>

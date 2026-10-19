@@ -14,6 +14,10 @@ export default function TermsPage() {
       updated="17 de octubre de 2026"
       sections={[
         {
+          heading: "El responsable del servicio",
+          body: "Guardia Flow es operado por [Nombre legal o razón social], con domicilio en [Dirección fiscal completa], [País]. Identificación fiscal: [RFC / ID fiscal]. Contacto legal: soporte@guardiaflow.com. Estos términos se rigen por las leyes de [País / jurisdicción elegida] y, en lo que no contradiga la legislación local del consumidor, cualquier controversia se someterá a los tribunales competentes de [Ciudad, País].",
+        },
+        {
           heading: "El servicio",
           body: "Guardia Flow es una herramienta de análisis de seguridad pensada para personas sin conocimientos técnicos: analiza enlaces, correos, mensajes, códigos QR, archivos, imágenes y audio en busca de señales de phishing, estafas, suplantación y manipulación, además de verificar filtraciones de datos y consultar inteligencia de amenazas. Al registrarte y usar Guardia Flow aceptas estos términos.",
         },
