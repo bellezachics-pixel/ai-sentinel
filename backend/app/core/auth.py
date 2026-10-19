@@ -122,11 +122,11 @@ class UserLogin(BaseModel):
     username: str
     password: str
 
-    @validator("password")
-    def password_bytes_limit(cls, v):
-        if len(v.encode("utf-8")) > 72:
-            raise ValueError("Password no puede exceder 72 bytes")
-        return v
+    # NOTA: sin limite de 72 bytes a proposito. Los hashes existentes solo
+    # cubren los primeros 72 bytes; rechazar aqui bloquearia cuentas
+    # creadas antes de la politica. El limite estricto se aplica en
+    # UserCreate (nuevas cuentas), donde esta el riesgo real: dos
+    # contraseñas nuevas distintas podrian colapsar al mismo hash.
 
 
 class TokenResponse(BaseModel):

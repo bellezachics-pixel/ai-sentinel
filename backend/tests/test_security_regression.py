@@ -205,9 +205,11 @@ def test_password_multibyte_cuenta_bytes_no_caracteres():
         UserCreate(username="usuario1", password=base, email="u@e.com")
 
 
-def test_login_rechaza_password_mayor_72_bytes():
+def test_login_acepta_password_larga_para_cuentas_legado():
+    # Politica "sin bloquear cuentas existentes": el login NO rechaza
+    # passwords >72 bytes (los hashes viejos solo cubren los primeros 72
+    # bytes; rechazar bloquearia cuentas creadas antes de la politica).
     from app.core.auth import UserLogin
-    import pydantic
 
-    with pytest.raises(pydantic.ValidationError):
-        UserLogin(username="u", password="Aa1!" + "z" * 100)
+    creds = UserLogin(username="u", password="Aa1!" + "z" * 100)
+    assert creds.password.endswith("z")
