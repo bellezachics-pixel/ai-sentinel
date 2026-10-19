@@ -154,6 +154,7 @@ export default function SentinelChat() {
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSend()}
           placeholder="Escribe tu pregunta de seguridad..."
+          maxLength={4000}
           className="flex-1 h-11 px-4 rounded-lg bg-[#111827] border border-[#1e293b] text-sm text-slate-300 placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20"
         />
         <button

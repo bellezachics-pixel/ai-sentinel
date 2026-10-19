@@ -35,6 +35,18 @@ def _load_json(path: Path) -> dict:
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
     except Exception:
+        # JSON corrupto (corte de luz, disco lleno, escritura a medias):
+        # NO sobrescribir en silencio. Mover a cuarentena con marca de
+        # tiempo para recuperacion manual o desde el respaldo diario.
+        try:
+            quarantine = path.with_name(
+                f"{path.name}.corrupt-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+            )
+            os.replace(path, quarantine)
+        except OSError:
+            # Si ni siquiera se puede mover, al menos no destruir datos:
+            # devolver vacio sin tocar el archivo.
+            pass
         return {}
 
 

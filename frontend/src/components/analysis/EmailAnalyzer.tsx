@@ -46,10 +46,10 @@ export default function EmailAnalyzer() {
 
   const socialEngineeringIndicators = result?.findings.filter(
     (f) =>
-      f.type.toLowerCase().includes("social") ||
-      f.type.toLowerCase().includes("phishing") ||
-      f.type.toLowerCase().includes("urgency") ||
-      f.type.toLowerCase().includes("impersonation")
+      (f.type ?? "").toLowerCase().includes("social") ||
+      (f.type ?? "").toLowerCase().includes("phishing") ||
+      (f.type ?? "").toLowerCase().includes("urgency") ||
+      (f.type ?? "").toLowerCase().includes("impersonation")
   );
 
   return (

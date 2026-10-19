@@ -28,6 +28,7 @@ import stripe
 from app.core import billing_store
 from app.core.auth import UserInDB, require_admin, require_auth
 from app.core.billing import (
+    ACCESS_BLOCKING_STATUSES,
     PLAN_PRICE_LABEL,
     get_stripe_client,
     has_access,
@@ -292,8 +293,33 @@ def _record_refund_from_charge(charge: dict):
     billing_store.upsert_record(user_id, **fields)
 
 
-def _sync_subscription_event(subscription: dict):
-    """Persiste el estado de una suscripcion en el store local."""
+def _is_stale_event(record: dict | None, event_created: int | None) -> bool:
+    """True si el evento de Stripe es MAS ANTIGUO que el ultimo aplicado.
+
+    Stripe entrega los eventos en orden pero puede REENTREGAR eventos
+    antiguos (reintentos, reproducciones). Sin este chequeo, un
+    customer.subscription.updated viejo con status "active" podria
+    restaurar el acceso despues de una cancelacion o reembolso.
+    """
+    if not record or not event_created:
+        return False
+    last = record.get("last_event_created")
+    if last is None:
+        return False
+    try:
+        return int(event_created) < int(last)
+    except (TypeError, ValueError):
+        return False
+
+
+def _sync_subscription_event(subscription: dict, event_created: int | None = None, event_type: str | None = None):
+    """Persiste el estado de una suscripcion en el store local.
+
+    Protecciones de consistencia:
+    - Nunca rebajar un estado terminal (refunded/canceled) a uno activo:
+      un evento antiguo no puede resucitar el acceso.
+    - Nunca aceptar un evento con timestamp menor al ultimo aplicado.
+    """
     customer_id = subscription.get("customer")
     user_id, record = billing_store.get_record_by_customer(customer_id)
     if user_id is None:
@@ -304,6 +330,28 @@ def _sync_subscription_event(subscription: dict):
             subscription.get("id"), customer_id,
         )
         return
+
+    new_status = (subscription.get("status") or "none").lower()
+    current_status = ((record or {}).get("status") or "").lower()
+
+    if _is_stale_event(record, event_created):
+        logger.info(
+            "Webhook: %s ignorado para %s (evento antiguo: %s < %s)",
+            event_type, user_id, event_created,
+            (record or {}).get("last_event_created"),
+        )
+        return
+
+    if (
+        current_status in ACCESS_BLOCKING_STATUSES
+        and new_status not in ACCESS_BLOCKING_STATUSES
+    ):
+        logger.info(
+            "Webhook: %s no reactiva acceso de %s (estado terminal %s -> %s)",
+            event_type, user_id, current_status, new_status,
+        )
+        return
+
     billing_store.upsert_record(
         user_id,
         stripe_customer_id=customer_id,
@@ -312,6 +360,7 @@ def _sync_subscription_event(subscription: dict):
         trial_end=_unix_to_iso(subscription.get("trial_end")),
         current_period_end=_unix_to_iso(subscription.get("current_period_end")),
         cancel_at_period_end=bool(subscription.get("cancel_at_period_end", False)),
+        last_event_created=event_created,
     )
 
 
@@ -345,11 +394,20 @@ def _handle_webhook_event(event: dict):
         # Si la suscripcion ya existe en el evento de suscripcion, el
         # evento customer.subscription.* la sincronizara con detalle.
     elif event_type in SUBSCRIPTION_EVENTS:
-        _sync_subscription_event(data)
+        _sync_subscription_event(data, event_created=event.get("created"), event_type=event_type)
     elif event_type == "invoice.payment_failed":
         customer_id = data.get("customer")
-        user_id, _record = billing_store.get_record_by_customer(customer_id)
+        user_id, record = billing_store.get_record_by_customer(customer_id)
         if user_id:
+            # No rebajar un estado terminal a "past_due": reactivaria el
+            # acceso de una cuenta reembolsada/cancelada.
+            current = ((record or {}).get("status") or "").lower()
+            if current in ACCESS_BLOCKING_STATUSES:
+                logger.info(
+                    "Webhook: invoice.payment_failed ignorado para %s "
+                    "(estado terminal %s)", user_id, current,
+                )
+                return
             billing_store.upsert_record(
                 user_id,
                 stripe_customer_id=customer_id,
@@ -593,8 +651,34 @@ async def admin_refund(
             last_refund_id=refund.get("id"),
         )
 
+    # Un reembolso TOTAL debe cancelar la suscripcion activa del cliente:
+    # sin esto la suscripcion sigue viva en Stripe y vuelve a cobrar en el
+    # siguiente ciclo aunque el dinero ya haya sido devuelto.
+    canceled_subscriptions: list[str] = []
+    if payload.amount is None and customer_id:
+        try:
+            active_subs = stripe.Subscription.list(
+                customer=customer_id, status="active", limit=10
+            ).get("data", [])
+            for sub in active_subs:
+                stripe.Subscription.cancel(sub["id"])
+                canceled_subscriptions.append(sub["id"])
+        except stripe.error.StripeError as exc:
+            # El reembolso ya se hizo; el error de cancelacion se reporta
+            # para cancelar manualmente, sin ocultar el reembolso exitoso.
+            logger.error(
+                "Stripe subscription cancel after refund error: %s", exc
+            )
+        # Marcar el estado terminal local aunque no haya habido suscripcion
+        # activa (el webhook charge.refunded lo confirmara despues).
+        if user_id:
+            billing_store.upsert_record(
+                user_id, status="refunded", stripe_subscription_id=None
+            )
+
     return {
         "refund_id": refund.get("id"),
         "amount": refund.get("amount"),
         "status": refund.get("status"),
+        "canceled_subscriptions": canceled_subscriptions,
     }

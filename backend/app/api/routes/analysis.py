@@ -1,4 +1,5 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+import asyncio
 from app.models.schemas import (
     ChatRequest,
     ChatResponse,
@@ -88,6 +89,8 @@ async def analyze_url(
     try:
         result = await orchestrator.analyze_url(request.url, request.deep_scan, user_id=_access.id if _access else None)
         return result.model_dump()
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -107,6 +110,8 @@ async def analyze_email(
             user_id=_access.id if _access else None,
         )
         return result.model_dump()
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -120,6 +125,8 @@ async def analyze_message(
     try:
         result = await orchestrator.analyze_message(request.platform, request.body, user_id=_access.id if _access else None)
         return result.model_dump()
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -214,13 +221,20 @@ async def analyze_network(
     # SSRF guard: reject private/loopback/link-local/reserved/metadata
     # targets with HTTP 400 before any connection is attempted.
     try:
-        validate_public_network_target(request.target_ip or "8.8.8.8")
+        # getaddrinfo es bloqueante: moverlo a un hilo para no congelar
+        # el event loop durante la resolucion DNS.
+        validate_target = asyncio.to_thread(
+            validate_public_network_target, request.target_ip or "8.8.8.8"
+        )
+        await validate_target
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
     try:
         result = await orchestrator.check_network(request.target_ip, user_id=_access.id if _access else None)
         return result.model_dump()
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -236,6 +250,8 @@ async def analyze_identity(
             request.value, request.check_type, user_id=_access.id if _access else None
         )
         return result.model_dump()
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -251,6 +267,8 @@ async def threat_intel_lookup(
             request.indicator, request.indicator_type
         )
         return {"indicator": request.indicator, "results": results}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -263,6 +281,8 @@ async def chat(
     """Responder preguntas de ciberseguridad con OpenAI o fallback local."""
     try:
         return await sentinel_chat.ask(request.message, request.history)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -275,6 +295,8 @@ async def get_dashboard_stats(
     try:
         stats = await orchestrator.get_dashboard_stats(user_id=_access.id if _access else None)
         return stats
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

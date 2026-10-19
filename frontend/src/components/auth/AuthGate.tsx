@@ -25,11 +25,22 @@ export default function AuthGate({ children }: AuthGateProps) {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(() => Boolean(getAccessToken()));
+  // loading=true inicial es IDENTICO en servidor y cliente (spinner), asi
+  // que no hay mismatch de hidratacion. La sesion real se resuelve en el
+  // effect, despues de montar; nunca leyendo localStorage durante el render.
+  const [hydrated, setHydrated] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+    const finish = () => {
+      if (cancelled) return;
+      setLoading(false);
+      setHydrated(true);
+    };
+
     const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
     const hashAccessToken = hashParams.get("access_token");
     const hashRefreshToken = hashParams.get("refresh_token");
@@ -55,16 +66,27 @@ export default function AuthGate({ children }: AuthGateProps) {
 
     const token = getAccessToken();
     if (!token) {
-      return;
+      // Sin sesion: resolver en microtask para no disparar setState
+      // sincrono dentro del effect (regla react-hooks).
+      queueMicrotask(finish);
+      return () => {
+        cancelled = true;
+      };
     }
 
     api
       .getMe()
-      .then(setUser)
+      .then((profile) => {
+        if (!cancelled) setUser(profile);
+      })
       .catch(() => {
         clearAuthTokens();
       })
-      .finally(() => setLoading(false));
+      .finally(finish);
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleSubmit = async () => {
@@ -111,7 +133,7 @@ export default function AuthGate({ children }: AuthGateProps) {
     window.location.href = api.getGoogleLoginUrl();
   };
 
-  if (loading) {
+  if (!hydrated || loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-[#0a0e1a]">
         <Loader2 className="h-8 w-8 animate-spin text-cyan-400" />

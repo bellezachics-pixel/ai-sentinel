@@ -9,6 +9,7 @@ Security Middleware - Blindaje completo del backend Guardia Flow
 """
 from __future__ import annotations
 
+import ipaddress
 import time
 import hashlib
 import re
@@ -18,6 +19,42 @@ from collections import defaultdict
 from fastapi import Request, Response, HTTPException
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
+
+
+def _is_private_host(host: str) -> bool:
+    """True si la IP de conexión es privada/local (estamos detrás de un proxy)."""
+    try:
+        return ipaddress.ip_address(host).is_private or ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
+def get_client_ip(request: Request) -> str:
+    """IP real de la clienta, única fuente de verdad para limitador y anti fuerza bruta.
+
+    Prioridad:
+    1. Cabecera ``True-Client-IP``: la inyecta el borde de Render y la
+       clienta NO puede falsificarla (el proxy la establece al terminar la
+       conexión). Sin esto, en Render todas las clientas comparten la IP del
+       proxy y 5 intentos fallidos bloquean a TODO EL MUNDO.
+    2. Si la conexión viene de una IP privada (proxy local), el ÚLTIMO valor
+       de ``X-Forwarded-For`` (el añadido por el proxy más cercano).
+    3. IP de la conexión (client.host).
+    """
+    true_ip = request.headers.get("true-client-ip")
+    if true_ip and true_ip.strip():
+        return true_ip.strip()
+
+    client = request.client
+    host = client.host if client and client.host else ""
+    if host and _is_private_host(host):
+        xff = request.headers.get("x-forwarded-for")
+        if xff:
+            last = xff.split(",")[-1].strip()
+            if last:
+                return last
+    return host or "unknown"
+
 
 
 # ============================================================
@@ -187,14 +224,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         return response
 
     def _get_client_ip(self, request: Request) -> str:
-        # NO confiar en X-Forwarded-For: una cabecera que el cliente puede
-        # variar a voluntad romperia la identidad del limitador. En Render
-        # la IP de la conexion (client.host) YA es la IP real del cliente
-        # (el proxy de Render termina la conexion directamente), asi que
-        # usarla tambien unifica el criterio con la proteccion anti
-        # fuerza bruta de login.
-        client = request.client
-        return client.host if client and client.host else "unknown"
+        return get_client_ip(request)
 
 
 # ============================================================
@@ -204,7 +234,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 MALICIOUS_PATTERNS = [
     re.compile(r"<script", re.IGNORECASE),
     re.compile(r"javascript:", re.IGNORECASE),
-    re.compile(r"on\w+\s*=", re.IGNORECASE),
+    # Exige un separador antes de "on..." para no confundir tokens legitimos
+    # como "session_id=" con manejadores de eventos HTML (onclick=, etc.).
+    re.compile(r"[\s\"']on\w+\s*=", re.IGNORECASE),
     re.compile(r"union\s+select", re.IGNORECASE),
     re.compile(r";\s*drop\s+table", re.IGNORECASE),
     re.compile(r"--\s*$"),
@@ -223,17 +255,25 @@ class RequestValidationMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         # Check request size
         content_length = request.headers.get("content-length")
-        if content_length and int(content_length) > MAX_REQUEST_SIZE:
-            return JSONResponse(
-                status_code=413,
-                content={"detail": "Solicitud demasiado grande. Maximo 25MB."},
-            )
+        if content_length:
+            try:
+                length = int(content_length)
+            except (TypeError, ValueError):
+                return JSONResponse(
+                    status_code=400,
+                    content={"detail": "Encabezado Content-Length invalido."},
+                )
+            if length > MAX_REQUEST_SIZE:
+                return JSONResponse(
+                    status_code=413,
+                    content={"detail": "Solicitud demasiado grande. Maximo 25MB."},
+                )
 
         # Check URL for malicious patterns
         url_str = str(request.url)
         for pattern in MALICIOUS_PATTERNS:
             if pattern.search(url_str):
-                client_ip = request.client.host if request.client else "unknown"
+                client_ip = get_client_ip(request)
                 rate_limit_store.block_ip(client_ip, 600)
                 return JSONResponse(
                     status_code=400,

@@ -21,6 +21,14 @@ URGENCY_PATTERNS: list[tuple[str, str]] = [
     (r"\b(verify\s+(?:your|now)|confirm\s+(?:your|now)|validate\s+(?:your|now))\b", "urgency_verify"),
     (r"\b(within\s+\d+\s+(?:hour|minute|day)s?|last\s+chance|final\s+warning)\b", "urgency_countdown"),
     (r"\b(unauthorized\s+(?:access|activity|transaction))\b", "urgency_unauthorized"),
+    # Espanol latinoamericano: la clientela analiza mensajes en espanol y
+    # las estafas locales usan estas frases verbatim.
+    (r"\b(inmediat(?:a|o|amente)|urgente|ahora\s+mismo|act[uú]e\s+ahora|acciona\s+ya)\b", "urgency_immediate"),
+    (r"\b(caduc(?:a|ó|ada|ará)|vence|vencimiento|último\s+día|tiempo\s+limitado|oferta\s+por\s+tiempo\s+limitado)\b", "urgency_expiration"),
+    (r"\b(cuenta\s+(?:suspendida|bloqueada|desactivada|restringida)|será\s+bloqueada|sera\s+bloqueada|ser[aá]\s+suspendid[ao])\b", "urgency_threat"),
+    (r"\b(verifiqu[ee]\s+(?:su|ahora)|confirme\s+(?:su|ahora)|valide\s+(?:su|ahora))\b", "urgency_verify"),
+    (r"\b(en\s+\d+\s+(?:horas?|minutos?|d[ií]as?)|última\s+oportunidad|ultima\s+oportunidad|advertencia\s+final)\b", "urgency_countdown"),
+    (r"\b(actividad\s+no\s+autorizada|acceso\s+no\s+autorizado|transacci[oó]n\s+no\s+reconocida)\b", "urgency_unauthorized"),
 ]
 
 IMPERSONATION_PATTERNS: list[tuple[str, str]] = [
@@ -30,6 +38,12 @@ IMPERSONATION_PATTERNS: list[tuple[str, str]] = [
     (r"\b(paypal|microsoft|apple|google|amazon|netflix|bank)\b", "impersonation_brand"),
     (r"\b(dear\s+(?:customer|user|member|valued|account\s+holder))\b", "impersonation_greeting"),
     (r"\b(official\s+(?:notice|communication|notification))\b", "impersonation_official"),
+    # Espanol latinoamericano
+    (r"\b(equipo\s+de\s+(?:seguridad|soporte|confianza))\b", "impersonation_security_team"),
+    (r"\b(soporte\s+(?:t[eé]cnico|al\s+cliente|técnico))\b", "impersonation_support"),
+    (r"\b(estimad[ao]\s+(?:cliente|usuario|usuaria))\b", "impersonation_greeting"),
+    (r"\b(aviso\s+(?:oficial|importante|urgente))\b", "impersonation_official"),
+    (r"\b(banorte|bbva|santander|hsbc|mercado\s+libre|mercadolibre|claro|telcel|movistar)\b", "impersonation_brand"),
 ]
 
 CREDENTIAL_HARVEST_PATTERNS: list[tuple[str, str]] = [

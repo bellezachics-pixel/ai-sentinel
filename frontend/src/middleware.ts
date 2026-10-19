@@ -12,11 +12,16 @@ export function middleware(request: NextRequest) {
 
   const authHeader = request.headers.get("authorization");
   if (authHeader?.startsWith("Basic ")) {
-    const decoded = atob(authHeader.slice(6));
-    const separator = decoded.indexOf(":");
-    const password = separator === -1 ? "" : decoded.slice(separator + 1);
-    if (password === stagingPassword) {
-      return NextResponse.next();
+    try {
+      const decoded = atob(authHeader.slice(6));
+      const separator = decoded.indexOf(":");
+      const password = separator === -1 ? "" : decoded.slice(separator + 1);
+      if (password === stagingPassword) {
+        return NextResponse.next();
+      }
+    } catch {
+      // Base64 invalido (atob lanza) o caracteres fuera de Latin-1:
+      // tratar como credencial incorrecta, no como error 500.
     }
   }
 

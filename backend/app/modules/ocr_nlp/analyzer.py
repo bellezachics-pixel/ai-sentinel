@@ -26,6 +26,13 @@ URGENCY_PHRASES: list[tuple[str, float]] = [
     (r"\b(within\s+\d+\s+(?:hour|minute|day)s?)\b", 0.7),
     (r"\b(don'?t\s+delay|respond\s+(?:immediately|now|asap))\b", 0.7),
     (r"\b(failure\s+to\s+(?:respond|comply|act))\b", 0.8),
+    # Espanol latinoamericano
+    (r"\b(act[uú]e\s+ahora|inmediat(?:a|o|amente)|urgente|ahora\s+mismo)\b", 0.8),
+    (r"\b(caduc(?:a|ó|ada|ará)|vence|vencimiento|tiempo\s+limitado)\b", 0.7),
+    (r"\b(última\s+oportunidad|ultima\s+oportunidad|advertencia\s+final)\b", 0.8),
+    (r"\b(en\s+\d+\s+(?:horas?|minutos?|d[ií]as?))\b", 0.7),
+    (r"\b(no\s+espere|responda\s+(?:ahora|inmediatamente|cuanto\s+antes))\b", 0.7),
+    (r"\b(de\s+no\s+(?:responder|cumplir))\b", 0.8),
 ]
 
 AUTHORITY_PHRASES: list[tuple[str, float]] = [
@@ -46,6 +53,12 @@ THREAT_PHRASES: list[tuple[str, float]] = [
     (r"\b(legal\s+(?:action|consequences|proceedings))\b", 0.7),
     (r"\b(penalty|fine|prosecution|lawsuit)\b", 0.6),
     (r"\b(data\s+(?:breach|leak|exposure|compromise))\b", 0.8),
+    # Espanol latinoamericano
+    (r"\b(cuenta\s+(?:suspendida|bloqueada|desactivada|restringida|cerrada))\b", 0.8),
+    (r"\b(acceso\s+no\s+autorizado|actividad\s+no\s+autorizada)\b", 0.9),
+    (r"\b(brecha\s+de\s+seguridad|incidente\s+de\s+seguridad)\b", 0.8),
+    (r"\b(actividad\s+sospechosa)\b", 0.7),
+    (r"\b(acción\s+legal|accion\s+legal|demanda|multa)\b", 0.7),
 ]
 
 CREDENTIAL_REQUEST_PHRASES: list[tuple[str, float]] = [
@@ -56,6 +69,14 @@ CREDENTIAL_REQUEST_PHRASES: list[tuple[str, float]] = [
     (r"\b(click\s+(?:here|below|the\s+link)\s+to\s+(?:verify|confirm|update|login))\b", 0.8),
     (r"\b(reset\s+your\s+password)\b", 0.5),
     (r"\b(provide\s+(?:your|the\s+following)\s+(?:information|details|credentials))\b", 0.8),
+    # Espanol latinoamericano
+    (r"\b(verifiqu[ee]\s+su\s+(?:identidad|cuenta|información|informacion))\b", 0.9),
+    (r"\b(confirme\s+su\s+(?:contraseña|contrasena|cuenta|información|informacion))\b", 0.9),
+    (r"\b(actualice\s+sus\s+(?:datos|credenciales|contraseña|contrasena))\b", 0.8),
+    (r"\b(ingrese\s+su\s+(?:contraseña|contrasena|usuario|correo|tarjeta))\b", 0.9),
+    (r"\b(haga\s+clic\s+(?:aquí|aqui|en\s+el\s+enlace)\s+para\s+(?:verificar|confirmar|actualizar))\b", 0.8),
+    (r"\b(restaur[ae]r\s+su\s+contraseña|restaur[ae]r\s+su\s+contrasena)\b", 0.5),
+    (r"\b(proporcione\s+(?:sus|los\s+siguientes)\s+(?:datos|información|informacion))\b", 0.8),
 ]
 
 REWARD_PHRASES: list[tuple[str, float]] = [
@@ -64,6 +85,11 @@ REWARD_PHRASES: list[tuple[str, float]] = [
     (r"\b(claim\s+your\s+(?:prize|reward|gift|bonus))\b", 0.8),
     (r"\b(free\s+(?:gift|trial|offer|bonus|money))\b", 0.6),
     (r"\b(exclusive\s+(?:offer|deal|opportunity|invitation))\b", 0.5),
+    # Espanol latinoamericano
+    (r"\b(felicidades|ganaste|has\s+ganado|fuiste\s+(?:seleccionad[ao]|elegid[ao]))\b", 0.8),
+    (r"\b(premio|tarjeta\s+de\s+regalo|recompensa)\b", 0.7),
+    (r"\b(reclama\s+tu\s+(?:premio|recompensa|regalo|bono))\b", 0.8),
+    (r"\b(gratis|totalmente\s+gratis)\b", 0.6),
 ]
 
 IMPERSONATION_PHRASES: list[tuple[str, float]] = [

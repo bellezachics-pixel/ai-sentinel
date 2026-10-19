@@ -144,7 +144,7 @@ class AnalysisOrchestrator:
 
     async def analyze_url(self, url: str, deep_scan: bool = False, user_id: str | None = None) -> AnalysisResult:
         analysis_id = str(uuid.uuid4())[:8]
-        safe_url, safety_finding = normalize_public_http_url(url)
+        safe_url, safety_finding = await asyncio.to_thread(normalize_public_http_url, url)
 
         url_result = await self.url_analyzer.analyze_url(safe_url or url)
         header_result = {"score": 0, "findings": []}
@@ -177,13 +177,19 @@ class AnalysisOrchestrator:
         if safe_url and not safety_finding:
             try:
                 resp = await safe_http_get(safe_url, timeout=10)
-                content_result = await self.content_analyzer.analyze_content(resp.text, "html")
+                # Limitar a 2 MB: recortar ANTES de pasar a las regex del
+                # analizador de contenido (una pagina enorme explota CPU/RAM).
+                content_result = await self.content_analyzer.analyze_content(resp.text[:2_000_000], "html")
                 content_score = content_result.get("score", 0)
             except Exception:
                 pass
 
         # Calculate risk score
-        intel_scores = [r.get("score", 0) for r in intel_results] if intel_results else []
+        # Los proveedores devuelven {provider, available, data{...}, error}:
+        # score/is_malicious viven DENTRO de data. Sin este mapeo la
+        # inteligencia de amenazas quedaba descartada silenciosamente.
+        intel_summaries = [self._summarize_intel(r) for r in intel_results] if intel_results else []
+        intel_scores = [s["score"] for s in intel_summaries]
         risk_score = risk_engine.calculate_risk(
             url_score=url_result.get("score", 0),
             content_score=content_score,
@@ -192,27 +198,23 @@ class AnalysisOrchestrator:
             threat_intel_scores=intel_scores,
         )
 
-        # Aggregate findings
-        all_findings = []
-        for source, result in [
+        # Aggregate findings (normalized to always include type/description/severity)
+        all_findings = self._collect_findings([
             ("url_analysis", url_result),
             ("content_analysis", content_result),
             ("header_analysis", header_result),
             ("network_analysis", network_result),
-        ]:
-            for f in result.get("findings", []):
-                f["source"] = source
-                all_findings.append(f)
+        ])
 
         # Build threat intel results
         threat_intel_models = [
             ThreatIntelResult(
-                source=r.get("source", "unknown"),
-                score=r.get("score", 0),
-                is_malicious=r.get("is_malicious", False),
-                details=r.get("details", {}),
+                source=s["source"],
+                score=s["score"],
+                is_malicious=s["is_malicious"],
+                details=s["details"],
             )
-            for r in intel_results
+            for s in intel_summaries
         ]
 
         # Generate recommendations
@@ -260,16 +262,11 @@ class AnalysisOrchestrator:
             content_score=max(content_result.get("score", 0), nlp_result.get("score", 0)),
         )
 
-        all_findings = []
-        for f in nlp_result.get("findings", []):
-            f["source"] = "nlp_analysis"
-            all_findings.append(f)
-        for f in content_result.get("findings", []):
-            f["source"] = "content_analysis"
-            all_findings.append(f)
-        for f in url_findings:
-            f["source"] = "sender_analysis"
-            all_findings.append(f)
+        all_findings = self._collect_findings([
+            ("nlp_analysis", nlp_result),
+            ("content_analysis", content_result),
+            ("sender_analysis", {"findings": url_findings}),
+        ])
 
         recommendations = self._generate_recommendations(risk_score, all_findings)
 
@@ -302,16 +299,11 @@ class AnalysisOrchestrator:
         )
         risk_score = risk_engine.calculate_risk(content_score=content_score)
 
-        all_findings = []
-        for source, result in [
+        all_findings = self._collect_findings([
             ("nlp_analysis", nlp_result),
             ("content_analysis", content_result),
             ("openai_analysis", ai_result),
-        ]:
-            for finding in result.get("findings", []):
-                normalized = self._normalize_finding(finding)
-                normalized["source"] = source
-                all_findings.append(normalized)
+        ])
 
         recommendations = self._generate_recommendations(risk_score, all_findings)
         if ai_result.get("recommendation"):
@@ -346,9 +338,7 @@ class AnalysisOrchestrator:
             url_score=qr_result.get("score", 0),
         )
 
-        findings = qr_result.get("findings", [])
-        for f in findings:
-            f["source"] = "qrishing_analysis"
+        findings = self._collect_findings([("qrishing_analysis", qr_result)])
 
         recommendations = self._generate_recommendations(risk_score, findings)
 
@@ -375,9 +365,7 @@ class AnalysisOrchestrator:
             content_score=deepfake_result.get("score", 0),
         )
 
-        findings = deepfake_result.get("findings", [])
-        for f in findings:
-            f["source"] = "deepfake_analysis"
+        findings = self._collect_findings([("deepfake_analysis", deepfake_result)])
 
         recommendations = self._generate_recommendations(risk_score, findings)
 
@@ -455,9 +443,7 @@ class AnalysisOrchestrator:
             network_score=network_result.get("score", 0),
         )
 
-        findings = network_result.get("findings", [])
-        for f in findings:
-            f["source"] = "network_analysis"
+        findings = self._collect_findings([("network_analysis", network_result)])
 
         recommendations = self._generate_recommendations(risk_score, findings)
 
@@ -676,12 +662,9 @@ class AnalysisOrchestrator:
                 "recent_analyses": [],
             }
 
-        # Network status check
-        try:
-            net_result = await self.network_analyzer.check_network_integrity("8.8.8.8")
-            network_secure = net_result.get("score", 0) < 25
-        except Exception:
-            network_secure = True
+        # Network status check (cacheado 5 min: el chequeo abre conexiones de
+        # red y no debe repetirse en cada carga del dashboard).
+        network_secure = await self._cached_network_secure()
 
         return {
             "total_scans": stats["total_scans"],
@@ -695,6 +678,27 @@ class AnalysisOrchestrator:
                 "risk_indicators": [],
             },
         }
+
+    _network_status_cache: tuple[float, bool] | None = None
+    _NETWORK_STATUS_TTL = 300.0  # 5 minutos
+
+    async def _cached_network_secure(self) -> bool:
+        import time
+
+        now = time.monotonic()
+        cached = AnalysisOrchestrator._network_status_cache
+        if cached and now - cached[0] < self._NETWORK_STATUS_TTL:
+            return cached[1]
+
+        secure = True
+        try:
+            net_result = await self.network_analyzer.check_network_integrity("8.8.8.8")
+            secure = net_result.get("score", 0) < 25
+        except Exception:
+            secure = True
+
+        AnalysisOrchestrator._network_status_cache = (now, secure)
+        return secure
 
     def _generate_recommendations(self, risk_score: RiskScore, findings: list[dict]) -> list[str]:
         recommendations = []
@@ -723,6 +727,59 @@ class AnalysisOrchestrator:
             recommendations.append("Patrones de ingenieria social detectados. Verificar el remitente.")
 
         return recommendations
+
+    @classmethod
+    def _collect_findings(cls, results_with_sources: list) -> list:
+        """Normaliza y etiqueta hallazgos de varios módulos con su fuente.
+
+        Cada módulo puede devolver hallazgos con campos distintos
+        (type/pattern_type/category, description/detail/matched_text).
+        _normalize_finding los unifica para que el frontend siempre reciba
+        type/description/severity presentes y nunca rompa al renderizar.
+        """
+        collected = []
+        for source, result in results_with_sources:
+            if not isinstance(result, dict):
+                continue
+            for finding in result.get("findings", []) or []:
+                if not isinstance(finding, dict):
+                    continue
+                normalized = cls._normalize_finding(finding)
+                normalized["source"] = source
+                collected.append(normalized)
+        return collected
+
+    @staticmethod
+    def _summarize_intel(result: dict) -> dict:
+        """Normaliza la respuesta de un proveedor de threat intel.
+
+        Todos devuelven {provider, indicator, available, data, error}; el
+        puntaje y la malignidad viven dentro de ``data`` con nombres
+        distintos por proveedor (score / abuse_confidence_score /
+        last_analysis_stats). Devuelve un dict plano y uniforme.
+        """
+        data = result.get("data") or {}
+        provider = result.get("provider") or data.get("source") or "unknown"
+
+        is_malicious = bool(
+            result.get("is_malicious") or data.get("is_malicious") or False
+        )
+
+        score = result.get("score") or data.get("score")
+        if score is None and data.get("abuse_confidence_score") is not None:
+            score = data["abuse_confidence_score"]
+        if score is None:
+            # VirusTotal: derivar del numero de motores que lo detectan.
+            stats = data.get("last_analysis_stats") or {}
+            malicious = int(stats.get("malicious", 0) or 0)
+            score = min(100, malicious * 10) if (is_malicious or malicious) else 0
+
+        return {
+            "source": provider,
+            "score": int(score or 0),
+            "is_malicious": is_malicious,
+            "details": data,
+        }
 
     @staticmethod
     def _normalize_finding(finding: dict) -> dict:

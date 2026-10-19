@@ -124,7 +124,7 @@ export default function MessageAnalyzer() {
                     <div key={i} className={cn("flex items-start gap-3 p-3 rounded-lg border", getRiskBg(f.severity))}>
                       <AlertTriangle className={cn("w-4 h-4 shrink-0 mt-0.5", getRiskColor(f.severity))} />
                       <div>
-                        <p className="text-xs font-medium text-slate-300">{f.type}</p>
+                        <p className="text-xs font-medium text-slate-300">{f.type ?? "hallazgo"}</p>
                         <p className="text-xs text-slate-400 mt-0.5">{f.description}</p>
                       </div>
                     </div>

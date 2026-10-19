@@ -3,6 +3,7 @@ Rutas de Autenticacion - Guardia Flow
 """
 from __future__ import annotations
 
+import asyncio
 import re
 import secrets
 import uuid
@@ -34,7 +35,7 @@ from app.core.auth import (
     users_db,
 )
 from app.core.config import settings
-from app.core.security import rate_limit_store
+from app.core.security import get_client_ip, rate_limit_store
 
 router = APIRouter(prefix="/api/v1/auth", tags=["Authentication"])
 
@@ -45,7 +46,7 @@ GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo"
 
 def _frontend_redirect(fragment: dict[str, str]) -> RedirectResponse:
     frontend_url = settings.FRONTEND_URL.rstrip("/")
-    return RedirectResponse(f"{frontend_url}/#{urlencode(fragment)}")
+    return RedirectResponse(f"{frontend_url}/app#{urlencode(fragment)}")
 
 
 def _google_redirect_uri(request: Request) -> str:
@@ -73,12 +74,13 @@ def _username_from_email(email: str) -> str:
     return f"{username[:32]}-{suffix}"
 
 
-def _create_google_user(email: str) -> UserInDB:
+async def _create_google_user(email: str) -> UserInDB:
+    hashed = await asyncio.to_thread(hash_password, secrets.token_urlsafe(32))
     user = UserInDB(
         id=str(uuid.uuid4()),
         username=_username_from_email(email),
         email=email.strip().lower(),
-        hashed_password=hash_password(secrets.token_urlsafe(32)),
+        hashed_password=hashed,
         is_active=True,
         is_admin=False,
     )
@@ -112,20 +114,28 @@ async def register(request: Request, user_data: UserCreate):
             detail="El nombre de usuario ya existe",
         )
 
-    # Check if email already used
+    # Email normalizado a minusculas: evita duplicados por mayusculas
+    # (Gabi@correo.com vs gabi@correo.com) y unifica el criterio de busqueda.
+    normalized_email = user_data.email.strip().lower()
+
+    # Check if email already used (case-insensitive)
     from app.core.auth import users_db
     for u in users_db.values():
-        if u.email == user_data.email:
+        if u.email.lower() == normalized_email:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="El email ya esta registrado",
             )
 
+    # bcrypt es costoso a proposito: correrlo fuera del event loop para no
+    # congelar las demas solicitudes del servidor.
+    hashed = await asyncio.to_thread(hash_password, user_data.password)
+
     user = UserInDB(
         id=str(uuid.uuid4()),
         username=user_data.username,
-        email=user_data.email,
-        hashed_password=hash_password(user_data.password),
+        email=normalized_email,
+        hashed_password=hashed,
     )
     create_user(user)
     set_user_trial_start(user)  # trial local de 3 dias desde el registro
@@ -142,7 +152,7 @@ async def register(request: Request, user_data: UserCreate):
 @router.post("/login", response_model=TokenResponse)
 async def login(request: Request, credentials: UserLogin):
     """Iniciar sesion."""
-    client_ip = request.client.host if request.client else "unknown"
+    client_ip = get_client_ip(request)
 
     # Check brute force
     if rate_limit_store.get_failed_auth_count(client_ip) >= 5:
@@ -153,7 +163,11 @@ async def login(request: Request, credentials: UserLogin):
         )
 
     user = get_user(credentials.username)
-    if not user or not verify_password(credentials.password, user.hashed_password):
+    # bcrypt fuera del event loop para no congelar el servidor.
+    password_ok = await asyncio.to_thread(
+        verify_password, credentials.password, user.hashed_password
+    ) if user else False
+    if not user or not password_ok:
         rate_limit_store.add_failed_auth(client_ip)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -238,7 +252,7 @@ async def google_callback(request: Request, code: str | None = None, state: str 
     if not email or not email_verified:
         return _frontend_redirect({"auth_error": "google_email_unverified"})
 
-    user = _find_user_by_email(email) or _create_google_user(email)
+    user = _find_user_by_email(email) or await _create_google_user(email)
     tokens = _issue_tokens(user)
 
     return _frontend_redirect(

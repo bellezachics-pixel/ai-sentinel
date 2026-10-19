@@ -86,10 +86,10 @@ export default function DeepfakeDetector() {
     | undefined;
   const manipulationIndicators = result?.findings.filter(
     (f) =>
-      f.type.toLowerCase().includes("manipulation") ||
-      f.type.toLowerCase().includes("deepfake") ||
-      f.type.toLowerCase().includes("synthetic") ||
-      f.type.toLowerCase().includes("artifact")
+      (f.type ?? "").toLowerCase().includes("manipulation") ||
+      (f.type ?? "").toLowerCase().includes("deepfake") ||
+      (f.type ?? "").toLowerCase().includes("synthetic") ||
+      (f.type ?? "").toLowerCase().includes("artifact")
   );
 
   return (
@@ -324,7 +324,7 @@ export default function DeepfakeDetector() {
                     />
                     <div>
                       <p className="text-xs font-medium text-slate-300">
-                        {finding.type}
+                        {finding.type ?? "hallazgo"}
                       </p>
                       <p className="text-xs text-slate-400 mt-0.5">
                         {finding.description}

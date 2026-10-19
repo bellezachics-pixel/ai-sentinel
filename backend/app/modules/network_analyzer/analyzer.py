@@ -14,6 +14,7 @@ connection; it CANNOT detect JA3-based AiTM interception.
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import socket
 import ssl
@@ -85,7 +86,11 @@ class NetworkAnalyzer:
         for _ in range(samples):
             start = time.monotonic()
             try:
-                sock = socket.create_connection((host, port), timeout=10)
+                # create_connection es bloqueante (hasta 10 s de timeout):
+                # moverlo a un hilo para no congelar el event loop.
+                sock = await asyncio.to_thread(
+                    socket.create_connection, (host, port), 10
+                )
                 elapsed = (time.monotonic() - start) * 1000  # ms
                 latencies.append(elapsed)
                 sock.close()
@@ -125,15 +130,17 @@ class NetworkAnalyzer:
         }
 
         try:
-            # Forward resolution
-            addr_info = socket.getaddrinfo(hostname, None, socket.AF_INET)
+            # Forward resolution (getaddrinfo es bloqueante: va a un hilo)
+            addr_info = await asyncio.to_thread(
+                socket.getaddrinfo, hostname, None, socket.AF_INET
+            )
             ips = list({info[4][0] for info in addr_info})
             results["resolved_ips"] = ips
 
             # Reverse DNS for each IP
             for ip in ips[:5]:
                 try:
-                    reverse = socket.gethostbyaddr(ip)
+                    reverse = await asyncio.to_thread(socket.gethostbyaddr, ip)
                     results["reverse_dns"][ip] = reverse[0]
                 except (socket.herror, socket.gaierror):
                     results["reverse_dns"][ip] = None
@@ -330,7 +337,8 @@ class NetworkAnalyzer:
                 hostname = host
 
             # SSRF guard: refuse to connect to non-public targets
-            hostname, blocked = self._gate_target(hostname)
+            # (la validacion resuelve DNS de forma bloqueante: va a un hilo)
+            hostname, blocked = await asyncio.to_thread(self._gate_target, hostname)
             if blocked:
                 blocked["metadata"]["analysis_type"] = "aitm_detection"
                 return blocked
@@ -470,7 +478,8 @@ class NetworkAnalyzer:
                 hostname = target
 
             # SSRF guard: refuse to connect to non-public targets
-            hostname, blocked = self._gate_target(hostname)
+            # (la validacion resuelve DNS de forma bloqueante: va a un hilo)
+            hostname, blocked = await asyncio.to_thread(self._gate_target, hostname)
             if blocked:
                 blocked["metadata"]["analysis_type"] = "network_integrity"
                 return blocked
@@ -563,7 +572,9 @@ class NetworkAnalyzer:
         # Use system resolver
         try:
             system_ips = set()
-            addr_info = socket.getaddrinfo(hostname, None, socket.AF_INET)
+            addr_info = await asyncio.to_thread(
+                socket.getaddrinfo, hostname, None, socket.AF_INET
+            )
             system_ips = {info[4][0] for info in addr_info}
             results["resolver_results"]["system"] = sorted(system_ips)
         except socket.gaierror:

@@ -77,6 +77,7 @@ async def safe_http_get(url: str, timeout: float = 10.0, max_redirects: int = MA
     local es rechazada antes de la conexion. Cierra el vector SSRF por
     redireccion (servidor publico que redirige hacia la red interna).
     """
+    import asyncio
     import httpx
 
     current = url
@@ -84,7 +85,9 @@ async def safe_http_get(url: str, timeout: float = 10.0, max_redirects: int = MA
         timeout=timeout, follow_redirects=False, verify=True
     ) as client:
         for _ in range(max_redirects + 1):
-            validated, finding = normalize_public_http_url(current)
+            # getaddrinfo es bloqueante: moverlo a un hilo para no congelar
+            # el event loop durante la resolucion DNS.
+            validated, finding = await asyncio.to_thread(normalize_public_http_url, current)
             if not validated:
                 raise ValueError(
                     f"Redireccion bloqueada por seguridad: "

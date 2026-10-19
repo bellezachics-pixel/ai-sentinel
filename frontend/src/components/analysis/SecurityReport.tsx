@@ -30,7 +30,7 @@ function buildReport(result: AnalysisResult, title: string) {
       ? result.findings
           .map(
             (finding, index) =>
-              `${index + 1}. [${finding.severity.toUpperCase()}] ${finding.type}: ${finding.description}`
+              `${index + 1}. [${(finding.severity ?? "low").toUpperCase()}] ${finding.type ?? "hallazgo"}: ${finding.description ?? ""}`
           )
           .join("\n")
       : "No se encontraron amenazas significativas.";
@@ -183,9 +183,9 @@ export default function SecurityReport({
           </p>
           <div className="space-y-2">
             {topFindings.map((finding, index) => (
-              <p key={`${finding.type}-${index}`} className="text-xs text-slate-400">
+              <p key={`${finding.type ?? "hallazgo"}-${index}`} className="text-xs text-slate-400">
                 <span className={cn("font-semibold", getRiskColor(finding.severity))}>
-                  {finding.type}:
+                  {finding.type ?? "hallazgo"}:
                 </span>{" "}
                 {finding.description}
               </p>

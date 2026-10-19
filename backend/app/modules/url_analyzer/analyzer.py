@@ -134,6 +134,21 @@ class URLAnalyzer:
                 })
         return findings
 
+    @staticmethod
+    def _is_official_brand_host(hostname: str, brand: str) -> bool:
+        """True si el hostname ES el dominio oficial de la marca (o subdominio
+        legitimo de este), en cuyo caso no hay suplantacion.
+
+        El chequeo anterior (endswith f'.{brand}.com') marcaba como fraude al
+        propio dominio apex: 'paypal.com' no termina en '.paypal.com'.
+        """
+        h = hostname.lower().lstrip(".")
+        for tld in ("com", "mx", "es", "org", "net"):
+            apex = f"{brand}.{tld}"
+            if h == apex or h.endswith(f".{apex}"):
+                return True
+        return False
+
     def _check_phishing_patterns(self, url: str) -> list[dict[str, Any]]:
         """Check for known phishing URL patterns."""
         findings: list[dict[str, Any]] = []
@@ -144,7 +159,7 @@ class URLAnalyzer:
 
         # Brand impersonation in subdomain or path
         for brand in BRAND_KEYWORDS:
-            if brand in hostname and not hostname.endswith(f".{brand}.com"):
+            if brand in hostname and not self._is_official_brand_host(hostname, brand):
                 findings.append({
                     "pattern": "brand_impersonation",
                     "brand": brand,

@@ -47,6 +47,15 @@ class QRishingAnalyzer:
             from pyzbar.pyzbar import decode as pyzbar_decode
 
             image = Image.open(io.BytesIO(image_data))
+            # Guard anti "bomba de descompresion": una imagen de pocos KB puede
+            # declarar dimensiones gigantes (p.ej. 65535x65535) y agotar la RAM
+            # al decodificarla. Rechazar antes de procesar.
+            MAX_PIXELS = 25_000_000
+            if image.width * image.height > MAX_PIXELS:
+                raise ValueError(
+                    f"Imagen demasiado grande ({image.width}x{image.height}). "
+                    "Maximo permitido: 25 megapixeles."
+                )
             results = pyzbar_decode(image)
 
             for result in results:
@@ -116,6 +125,18 @@ class QRishingAnalyzer:
             urls.append(data)
 
         return urls
+
+    @staticmethod
+    def _is_official_brand_host(hostname: str, brand: str) -> bool:
+        """True si el hostname ES el dominio oficial de la marca (o subdominio
+        legitimo de este). Igual que en url_analyzer: el chequeo anterior
+        marcaba como fraude al propio dominio apex ('paypal.com')."""
+        h = (hostname or "").lower().lstrip(".")
+        for tld in ("com", "mx", "es", "org", "net"):
+            apex = f"{brand}.{tld}"
+            if h == apex or h.endswith(f".{apex}"):
+                return True
+        return False
 
     def _analyze_url(self, url: str) -> list[dict[str, Any]]:
         """Analyze a single URL extracted from a QR code."""
@@ -213,7 +234,7 @@ class QRishingAnalyzer:
             "netflix", "facebook", "instagram", "bank", "chase",
         ]
         for brand in brands:
-            if brand in hostname.lower() and not hostname.endswith(f".{brand}.com"):
+            if brand in hostname.lower() and not QRishingAnalyzer._is_official_brand_host(hostname, brand):
                 findings.append({
                     "category": "qrishing",
                     "pattern_type": "brand_impersonation",
@@ -228,6 +249,19 @@ class QRishingAnalyzer:
     def _analyze_non_url_data(self, data: str) -> list[dict[str, Any]]:
         """Analyze non-URL QR code data for suspicious content."""
         findings: list[dict[str, Any]] = []
+
+        # Esquemas ejecutables o de datos: no llevan "://" asi que el
+        # extractor de URLs los ignora; aqui se detectan como criticos.
+        lowered = data.lower()
+        for scheme in SUSPICIOUS_SCHEMES:
+            if lowered.startswith(f"{scheme}:"):
+                findings.append({
+                    "category": "qrishing",
+                    "pattern_type": "suspicious_scheme",
+                    "severity": "critical",
+                    "detail": f"QR code contains '{scheme}:' URI, likely malicious",
+                    "data": data[:200],
+                })
 
         # Check for WiFi network configs (potential evil twin)
         if data.startswith("WIFI:"):

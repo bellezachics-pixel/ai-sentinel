@@ -156,7 +156,7 @@ export default function URLScanner() {
                       />
                       <div>
                         <p className="text-xs font-medium text-slate-300">
-                          {finding.type}
+                          {finding.type ?? "hallazgo"}
                         </p>
                         <p className="text-xs text-slate-400 mt-0.5">
                           {finding.description}
