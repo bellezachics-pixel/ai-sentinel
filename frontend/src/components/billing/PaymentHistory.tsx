@@ -55,7 +55,12 @@ export default function PaymentHistory() {
   };
 
   useEffect(() => {
-    load();
+    // Diferido un tick: evita setState sincrono en el cuerpo del efecto
+    // (react-hooks/set-state-in-effect) sin cambiar el comportamiento.
+    const timer = setTimeout(() => {
+      load();
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   return (

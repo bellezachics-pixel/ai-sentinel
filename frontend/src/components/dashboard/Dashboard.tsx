@@ -41,7 +41,12 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    fetchStats();
+    // La carga se difiere un tick para no llamar setState de forma
+    // sincrona dentro del efecto (regla react-hooks/set-state-in-effect).
+    const timer = setTimeout(() => {
+      fetchStats();
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   const overallRisk = stats

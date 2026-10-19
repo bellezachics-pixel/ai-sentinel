@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Sparkles, X } from "lucide-react";
 import { daysUntil, formatPlanDate } from "./BillingContext";
 
@@ -11,15 +11,16 @@ interface TrialBannerProps {
 }
 
 export default function TrialBanner({ trialEnd }: TrialBannerProps) {
-  const [dismissed, setDismissed] = useState(false);
-
-  useEffect(() => {
+  // Inicializacion perezosa: lee localStorage en el primer render, sin
+  // necesidad de un efecto (evita setState sincrono en useEffect).
+  const [dismissed, setDismissed] = useState(() => {
     try {
-      setDismissed(window.localStorage.getItem(DISMISS_KEY) === "1");
+      return window.localStorage.getItem(DISMISS_KEY) === "1";
     } catch {
       // localStorage unavailable (private mode, etc.): keep the banner visible.
+      return false;
     }
-  }, []);
+  });
 
   if (dismissed) return null;
 

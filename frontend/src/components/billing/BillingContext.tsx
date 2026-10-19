@@ -53,8 +53,17 @@ export function BillingProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const cancel = fetchStatus();
-    return cancel;
+    // Diferido un tick para no llamar setState de forma sincrona dentro
+    // del efecto (react-hooks/set-state-in-effect). El cleanup cancela
+    // tanto el timer como la peticion en vuelo.
+    let cancel: void | (() => void);
+    const timer = setTimeout(() => {
+      cancel = fetchStatus();
+    }, 0);
+    return () => {
+      clearTimeout(timer);
+      if (typeof cancel === "function") cancel();
+    };
   }, [fetchStatus]);
 
   const refresh = useCallback(() => {

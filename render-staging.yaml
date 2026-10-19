@@ -28,7 +28,7 @@ services:
     # FREE: sin bloque disk (el disco persistente exige instancia pagos).
     envVars:
       - key: PYTHON_VERSION
-        value: "3.11.0"
+        value: "3.11.11"
       - key: ENVIRONMENT
         value: development
       - key: DEBUG

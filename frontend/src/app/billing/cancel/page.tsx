@@ -38,13 +38,13 @@ export default function BillingCancelPage() {
             <ArrowLeft className="h-4 w-4" />
             Volver a mi panel
           </Link>
-          <a
+          <Link
             href="/#precios"
             className="flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-[#1e293b] text-sm font-medium text-slate-300 transition-colors hover:border-cyan-500/30 hover:text-cyan-300"
           >
             Ver precios
             <ArrowRight className="h-4 w-4" />
-          </a>
+          </Link>
         </div>
 
         <Link

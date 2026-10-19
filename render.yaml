@@ -23,7 +23,7 @@
 
 services:
   # ----------------------------------------------------------
-  # BACKEND — FastAPI (usuarios, análisis, billing Stripe TEST)
+  # BACKEND — FastAPI (usuarios, análisis, billing Stripe (TEST en staging, LIVE en produccion))
   # ----------------------------------------------------------
   - type: web
     name: guardiaflow-backend
@@ -47,7 +47,7 @@ services:
       sizeGB: 1
     envVars:
       - key: PYTHON_VERSION
-        value: "3.11.0"
+        value: "3.11.11"
       - key: ENVIRONMENT
         value: production
       - key: DEBUG
@@ -106,7 +106,7 @@ services:
     runtime: node
     region: oregon
     rootDir: frontend
-    buildCommand: npm install && npm run build
+    buildCommand: npm ci && npm run build
     startCommand: npm run start -- -p $PORT
     # En el dashboard: cambiar instance type a Starter ($7/mes) para producción.
     envVars:

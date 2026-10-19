@@ -37,7 +37,7 @@ services:
       sizeGB: 1
     envVars:
       - key: PYTHON_VERSION
-        value: "3.11.0"
+        value: "3.11.11"
       - key: ENVIRONMENT
         value: production
       - key: DEBUG
@@ -70,7 +70,7 @@ services:
     plan: free
     region: oregon
     rootDir: frontend
-    buildCommand: npm install && npm run build
+    buildCommand: npm ci && npm run build
     startCommand: npm start
     healthCheckPath: /
     envVars:

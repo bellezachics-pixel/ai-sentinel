@@ -104,6 +104,11 @@ class UserCreate(BaseModel):
     def password_strength(cls, v):
         if len(v) < 8:
             raise ValueError("Password debe tener al menos 8 caracteres")
+        if len(v.encode("utf-8")) > 72:
+            # bcrypt solo considera los primeros 72 bytes: aceptar mas
+            # truncaria silenciosamente (dos contraseñas que difieren
+            # después del byte 72 darían el mismo hash).
+            raise ValueError("Password no puede exceder 72 bytes")
         if not any(c.isupper() for c in v):
             raise ValueError("Password debe contener al menos una mayuscula")
         if not any(c.isdigit() for c in v):
@@ -116,6 +121,12 @@ class UserCreate(BaseModel):
 class UserLogin(BaseModel):
     username: str
     password: str
+
+    @validator("password")
+    def password_bytes_limit(cls, v):
+        if len(v.encode("utf-8")) > 72:
+            raise ValueError("Password no puede exceder 72 bytes")
+        return v
 
 
 class TokenResponse(BaseModel):

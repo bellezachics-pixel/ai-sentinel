@@ -173,3 +173,41 @@ def test_rate_limiter_ignora_x_forwarded_for():
     request.client.host = "203.0.113.7"
     request.headers = {"X-Forwarded-For": "1.2.3.4"}
     assert mw._get_client_ip(request) == "203.0.113.7"
+
+
+# ---------------------------------------------------------------
+# Bcrypt (P2): limite explicito de 72 bytes — sin truncamiento
+# silencioso de contraseñas largas.
+# ---------------------------------------------------------------
+
+def test_password_mayor_72_bytes_rechazada_en_registro():
+    from app.core.auth import UserCreate
+    import pydantic
+
+    larga = "Aa1!xxxx" + "y" * 100  # >72 bytes, cumple complejidad
+    with pytest.raises(pydantic.ValidationError):
+        UserCreate(username="usuario1", password=larga, email="u@e.com")
+    # 64 caracteres ASCII = 64 bytes: permitida (mismo limite previo en la practica)
+    ok = "Aa1!xxxx" + "y" * 56
+    assert len(ok.encode()) == 64
+    UserCreate(username="usuario1", password=ok, email="u@e.com")
+
+
+def test_password_multibyte_cuenta_bytes_no_caracteres():
+    from app.core.auth import UserCreate
+    import pydantic
+
+    # 40 caracteres 'ñ' = 80 bytes UTF-8: debe rechazarse aunque tenga
+    # menos de 72 caracteres.
+    base = "Aa1!" + "ñ" * 40
+    assert len(base) < 72 and len(base.encode("utf-8")) > 72
+    with pytest.raises(pydantic.ValidationError):
+        UserCreate(username="usuario1", password=base, email="u@e.com")
+
+
+def test_login_rechaza_password_mayor_72_bytes():
+    from app.core.auth import UserLogin
+    import pydantic
+
+    with pytest.raises(pydantic.ValidationError):
+        UserLogin(username="u", password="Aa1!" + "z" * 100)

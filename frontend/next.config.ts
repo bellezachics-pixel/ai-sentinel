@@ -1,6 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Salida standalone: el Dockerfile copia .next/standalone para una
+  // imagen de produccion minimalista y reproducible.
+  output: "standalone",
+
   // Security Headers
   async headers() {
     return [
