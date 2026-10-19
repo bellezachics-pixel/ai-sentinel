@@ -19,6 +19,13 @@ Mapea user_id local -> datos de la suscripcion Stripe:
   "last_canceled_subscription_id": str,  # ultima sub cancelada/reembolsada
                                          # (distingue recontratacion legitima
                                          # de reentrega tardia del evento viejo)
+  "pending_cancellation_sub_ids": list,  # trabajos de cancelacion POR
+                                         # IDENTIFICADOR de contrato: una
+                                         # recontratacion no confirma la
+                                         # cancelacion de la anterior, asi
+                                         # que el pendiente se conserva
+                                         # por id y se resuelve solo cuando
+                                         # Stripe confirma ese cierre
   "updated_at": str             # ISO 8601
 }
 
