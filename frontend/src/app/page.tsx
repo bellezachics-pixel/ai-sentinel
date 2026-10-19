@@ -72,7 +72,7 @@ const THREATS = [
   {
     icon: Fingerprint,
     title: "Filtración de tus datos",
-    text: "Comprueba si tu correo o contraseña aparecen en filtraciones conocidas de datos.",
+    text: "Comprueba si tu contraseña aparece en filtraciones conocidas: se analiza en tu dispositivo y jamás se envía a ningún servidor.",
   },
 ];
 
@@ -115,12 +115,12 @@ const TOOLS = [
   {
     icon: BrainCircuit,
     title: "Inteligencia de amenazas",
-    text: "Cruza indicadores con VirusTotal, urlscan y AbuseIPDB cuando están configurados.",
+    text: "Conexión con bases colectivas de amenazas (VirusTotal, urlscan, AbuseIPDB). En preparación: te avisaremos en tu panel cuando esté activa.",
   },
   {
     icon: Sparkles,
-    title: "Asistente de seguridad con IA",
-    text: "Pregunta en lenguaje simple qué hacer ante cualquier situación sospechosa.",
+    title: "Historial y recomendaciones",
+    text: "Tu panel guarda tus análisis, muestra tu historial y destaca qué conviene revisar primero.",
   },
 ];
 
@@ -497,7 +497,7 @@ export default function Home() {
                   "Códigos QR, archivos, imágenes y audio",
                   "Verificación de filtraciones de tus datos",
                   "Chequeo de servidores e inteligencia de amenazas",
-                  "Asistente de seguridad con IA",
+                  "Informes guardados en tu panel para consultarlos cuando quieras",
                   "Panel con historial y recomendaciones",
                 ].map((feature) => (
                   <li
@@ -576,7 +576,8 @@ export default function Home() {
           </Link>
           <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-slate-500">
             <Smartphone className="h-3.5 w-3.5" />
-            Funciona en computadora y celular, directo desde tu navegador
+            Usa las herramientas web sin instalar nada. Algunas funciones de
+            red requieren un agente opcional
           </p>
         </div>
       </section>
