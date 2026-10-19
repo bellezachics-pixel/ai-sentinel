@@ -260,6 +260,23 @@ async def get_billing_status(user: UserInDB = Depends(require_auth)):
 # ============================================================
 # POST /api/v1/billing/webhook  (SIN JWT; verifica Stripe-Signature)
 # ============================================================
+def _resolve_subscription_from_invoice(invoice_id: Optional[str]) -> tuple[Optional[str], bool]:
+    """Factura -> suscripcion. Devuelve (subscription_id, resoluble).
+
+    Compartido por el webhook de reembolsos y el reembolso administrativo:
+    la pertenencia por contrato debe ser la misma en ambas rutas. Sin
+    resolucion NO se actua sobre el acceso vigente (mejor conservador).
+    """
+    if not invoice_id:
+        return None, True
+    try:
+        invoice = stripe.Invoice.retrieve(invoice_id)
+        return (invoice or {}).get("subscription") or None, True
+    except Exception as exc:
+        logger.warning("No se pudo resolver la factura %s (%s)", invoice_id, exc)
+        return None, False
+
+
 def _record_refund_from_charge(charge: dict):
     """
     Persiste un reembolso asociado a un charge en el registro local del
@@ -298,17 +315,7 @@ def _record_refund_from_charge(charge: dict):
 
     invoice_id = charge.get("invoice")
     if invoice_id:
-        sub_from_charge: Optional[str] = None
-        resolved = False
-        try:
-            invoice = stripe.Invoice.retrieve(invoice_id)
-            sub_from_charge = (invoice or {}).get("subscription") or None
-            resolved = True
-        except Exception as exc:
-            logger.warning(
-                "Webhook: no se pudo resolver la factura %s del cargo %s (%s)",
-                invoice_id, charge.get("id"), exc,
-            )
+        sub_from_charge, resolved = _resolve_subscription_from_invoice(invoice_id)
         if not resolved:
             # Sin evidencia del contrato NO se toca el acceso vigente:
             # mejor un reembolso registrado sin cierre automatico que
@@ -318,27 +325,14 @@ def _record_refund_from_charge(charge: dict):
         current_sub = (_record or {}).get("stripe_subscription_id")
         if sub_from_charge and current_sub and sub_from_charge != current_sub:
             # Reembolso de un contrato anterior: el acceso vigente queda
-            # intacto; si ese contrato tenia un pendiente de cancelacion,
-            # el reembolso total lo confirma.
-            fields = dict(base_fields)
-            pending_ids = [
-                s for s in ((_record or {}).get("pending_cancellation_sub_ids") or []) if s
-            ]
-            if (
-                amount > 0
-                and refunded >= amount
-                and sub_from_charge in pending_ids
-            ):
-                fields["pending_cancellation_sub_ids"] = [
-                    s for s in pending_ids if s != sub_from_charge
-                ]
-                fields["cancellation_pending"] = (
-                    len(fields["pending_cancellation_sub_ids"]) > 0
-                )
-            billing_store.upsert_record(user_id, **fields)
+            # intacto y el trabajo de cancelacion de ese contrato se
+            # CONSERVA. Un reembolso NO es evidencia de cierre remoto:
+            # solo lo es la cancelacion confirmada de ese identificador.
+            billing_store.upsert_record(user_id, **base_fields)
             logger.info(
                 "Webhook: reembolso de contrato anterior %s para %s; "
-                "acceso vigente %s intacto",
+                "acceso vigente %s intacto y pendiente de cancelacion "
+                "conservado",
                 sub_from_charge, user_id, current_sub,
             )
             return
@@ -800,18 +794,43 @@ def _retry_pending_cancellations() -> None:
     ejecucion: al entrar a /admin/refund y el endpoint
     /admin/billing/retry-cancellations.
     """
+    summary = {"canceled": 0, "remaining": 0, "failures": 0}
     for user_id, record in billing_store.all_records().items():
         pending_ids = [
             s for s in (record.get("pending_cancellation_sub_ids") or []) if s
         ]
-        if pending_ids:
+        part = (
             _retry_pending_ids(user_id, record, pending_ids)
-        elif record.get("cancellation_pending"):
-            _retry_pending_legacy(user_id, record)
+            if pending_ids
+            else (
+                _retry_pending_legacy(user_id, record)
+                if record.get("cancellation_pending")
+                else {"canceled": 0, "remaining": 0, "failures": 0}
+            )
+        )
+        for key in summary:
+            summary[key] += part.get(key, 0)
+    return summary
 
 
-def _retry_pending_ids(user_id: str, record: dict, pending_ids: list) -> None:
-    """Cancela en Stripe los contratos pendientes, uno por uno."""
+# Estados de suscripcion que aun pueden generar cobros y por tanto deben
+# cancelarse cuando tienen un trabajo pendiente. "None" = estado
+# desconocido: se asume vivo (nunca se descarta un pendiente por inferencia).
+_CANCELABLE_STATUSES = (None, "active", "trialing", "past_due", "incomplete", "unpaid")
+_TERMINAL_SUB_STATUSES = ("canceled", "incomplete_expired")
+
+
+def _retry_pending_ids(user_id: str, record: dict, pending_ids: list) -> dict:
+    """Cancela en Stripe los contratos pendientes, uno por uno.
+
+    Consulta el estado REAL de cada identificador: la lista se pide SIN
+    filtro de estado (un filtro "active" oculta contratos past_due que
+    siguen cobrando) y los identificadores no listados se verifican con
+    una consulta directa. Solo se descarta un trabajo ante un estado
+    terminal comprobado o una cancelacion exitosa; las fallas de consulta
+    conservan el pendiente para el siguiente intento.
+    """
+    summary = {"canceled": 0, "remaining": 0, "failures": 0}
     customer_id = record.get("stripe_customer_id")
     if not customer_id:
         billing_store.upsert_record(
@@ -819,29 +838,54 @@ def _retry_pending_ids(user_id: str, record: dict, pending_ids: list) -> None:
             pending_cancellation_sub_ids=[],
             cancellation_pending=False,
         )
-        return
+        return summary
     try:
-        active_subs = stripe.Subscription.list(
-            customer=customer_id, status="active", limit=100
+        subs = stripe.Subscription.list(
+            customer=customer_id, limit=100
         ).get("data", [])
-    except stripe.error.StripeError as exc:
-        logger.error("Reintento de cancelacion fallo para %s: %s", user_id, exc)
-        return
-    active_ids = {s.get("id") for s in active_subs if s.get("id")}
+    except Exception as exc:
+        logger.error(
+            "Reintento de cancelacion: no se pudo consultar a Stripe para "
+            "%s: %s", user_id, exc,
+        )
+        summary["failures"] += len(pending_ids)
+        summary["remaining"] += len(pending_ids)
+        return summary
+    known: dict[str, Optional[str]] = {}
+    for sub in subs:
+        sub_id = sub.get("id")
+        if sub_id:
+            known[sub_id] = (sub.get("status") or "").lower() or None
     current_sub = record.get("stripe_subscription_id")
     current_status = (record.get("status") or "").lower()
     canceled_now: list[str] = []
-    skipped_vigente: list[str] = []
+    remaining: list[str] = []
     for sub_id in pending_ids:
-        if sub_id not in active_ids:
-            continue  # ya no activa en Stripe: cierre confirmado por ausencia
+        status = known.get(sub_id, "missing")
+        if status == "missing":
+            # No aparece en la lista del customer: verificar directamente
+            # (puede no existir, pertenecer a otro customer o haber sido
+            # omitida por algun filtro). No se infiere nada por ausencia.
+            status = _retrieve_subscription_status(sub_id, customer_id)
+            if status == "error":
+                remaining.append(sub_id)
+                summary["failures"] += 1
+                continue
+        if status in _TERMINAL_SUB_STATUSES or status == "not_found":
+            continue  # cierre comprobado (o contrato inexistente): descartar
+        if status not in _CANCELABLE_STATUSES:
+            logger.warning(
+                "Cancelacion pendiente %s con estado desconocido %s para %s: "
+                "se conserva el trabajo", sub_id, status, user_id,
+            )
+            remaining.append(sub_id)
+            continue
         if (
             sub_id == current_sub
             and current_status in billing_store.ACCESS_GRANTING_STATUSES
         ):
             # Es la suscripcion que otorga acceso ahora: el pendiente
             # apuntaba por error al contrato nuevo; no cancelarla.
-            skipped_vigente.append(sub_id)
             logger.warning(
                 "Cancelacion pendiente %s coincide con la suscripcion vigente "
                 "de %s: se omite (revisar manualmente)", sub_id, user_id,
@@ -850,15 +894,13 @@ def _retry_pending_ids(user_id: str, record: dict, pending_ids: list) -> None:
         try:
             stripe.Subscription.cancel(sub_id)
             canceled_now.append(sub_id)
-        except stripe.error.StripeError as exc:
+        except Exception as exc:
             logger.error(
                 "Cancelacion pendiente fallo para %s (%s): %s",
                 user_id, sub_id, exc,
             )
-    remaining = [
-        s for s in pending_ids
-        if s in active_ids and s not in canceled_now and s not in skipped_vigente
-    ]
+            remaining.append(sub_id)
+            summary["failures"] += 1
     fields: dict = {
         "pending_cancellation_sub_ids": remaining,
         "cancellation_pending": len(remaining) > 0,
@@ -873,15 +915,42 @@ def _retry_pending_ids(user_id: str, record: dict, pending_ids: list) -> None:
         fields["stripe_subscription_id"] = None
         fields["last_canceled_subscription_id"] = current_sub
     billing_store.upsert_record(user_id, **fields)
+    summary["canceled"] += len(canceled_now)
+    summary["remaining"] += len(remaining)
     if canceled_now:
         logger.info(
             "Reintento de cancelacion resuelto para %s (contratos: %s)",
             user_id, ", ".join(canceled_now),
         )
+    return summary
 
 
-def _retry_pending_legacy(user_id: str, record: dict) -> None:
+def _retrieve_subscription_status(sub_id: str, customer_id: str) -> Optional[str]:
+    """Estado real de una suscripcion, consultada por identificador.
+
+    Devuelve el estado en minusculas, "not_found" si Stripe reporta que no
+    existe, o "error" si la consulta fallo (en ese caso el pendiente se
+    conserva para el siguiente intento).
+    """
+    try:
+        sub = stripe.Subscription.retrieve(sub_id)
+    except stripe.error.InvalidRequestError as exc:
+        if "No such subscription" in str(exc):
+            return "not_found"
+        logger.error("Consulta de suscripcion %s fallo: %s", sub_id, exc)
+        return "error"
+    except Exception as exc:
+        logger.error("Consulta de suscripcion %s fallo: %s", sub_id, exc)
+        return "error"
+    if not isinstance(sub, dict) or sub.get("customer") != customer_id:
+        # No pertenece a este customer: no es nuestro trabajo.
+        return "not_found"
+    return (sub.get("status") or "").lower() or None
+
+
+def _retry_pending_legacy(user_id: str, record: dict) -> dict:
     """Modalidad de compatibilidad para registros previos a la lista por id."""
+    summary = {"canceled": 0, "remaining": 0, "failures": 0}
     customer_id = record.get("stripe_customer_id")
     if not customer_id:
         billing_store.upsert_record(
@@ -889,7 +958,7 @@ def _retry_pending_legacy(user_id: str, record: dict) -> None:
             pending_cancellation_sub_ids=[],
             cancellation_pending=False,
         )
-        return
+        return summary
     try:
         active_subs = stripe.Subscription.list(
             customer=customer_id, status="active", limit=10
@@ -910,10 +979,13 @@ def _retry_pending_legacy(user_id: str, record: dict) -> None:
             "Reintento de cancelacion resuelto para %s (%d suscripciones)",
             user_id, len(active_subs),
         )
-    except stripe.error.StripeError as exc:
+        summary["canceled"] += len(active_subs)
+    except Exception as exc:
         logger.error(
             "Reintento de cancelacion fallo para %s: %s", user_id, exc
         )
+        summary["failures"] += 1
+    return summary
 
 
 @router.post("/admin/billing/retry-cancellations")
@@ -922,10 +994,44 @@ async def admin_retry_cancellations(admin: UserInDB = Depends(require_admin)):
 
     Via independiente para trabajos originados por webhooks remotos
     (reembolso desde el dashboard de Stripe) que de otro modo solo se
-    procesarian al entrar a /admin/refund.
+    procesarian al entrar a /admin/refund. Devuelve el resultado del
+    recorrido para distinguir un reintento que proceso trabajos de uno
+    que no ejecuto nada (o no pudo consultar a Stripe).
     """
-    _retry_pending_cancellations()
-    return {"status": "ok"}
+    client = get_stripe_client()
+    if client is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="pasarela_no_configurada",
+        )
+    try:
+        summary = _retry_pending_cancellations()
+    except Exception as exc:
+        logger.error("retry-cancellations: recorrido fallo: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="error_pasarela_pago",
+        )
+    return {"status": "ok", **summary}
+
+
+def _resolve_subscription_for_charge(client, charge_id: str) -> Optional[str]:
+    """Cargo -> factura -> suscripcion. None si no es resoluble.
+
+    Misma regla de pertenencia que el webhook de reembolsos: una
+    devolucion administrativa de un cargo de una suscripcion ANTERIOR no
+    debe cancelar la suscripcion vigente de la clienta.
+    """
+    try:
+        charge_obj = client.Charge.retrieve(charge_id)
+    except stripe.error.StripeError as exc:
+        logger.warning(
+            "No se pudo recuperar el cargo %s (%s)", charge_id, exc,
+        )
+        return None
+    invoice_id = (charge_obj or {}).get("invoice")
+    sub_id, _ = _resolve_subscription_from_invoice(invoice_id)
+    return sub_id
 
 
 @router.post("/admin/refund")
@@ -998,56 +1104,72 @@ async def admin_refund(
     # siguiente ciclo aunque el dinero ya haya sido devuelto.
     canceled_subscriptions: list[str] = []
     cancellation_error: str | None = None
+    historical_charge = False
     if payload.amount is None and customer_id:
-        try:
-            active_subs = stripe.Subscription.list(
-                customer=customer_id, status="active", limit=10
-            ).get("data", [])
-            for sub in active_subs:
-                stripe.Subscription.cancel(sub["id"])
-                canceled_subscriptions.append(sub["id"])
-        except stripe.error.StripeError as exc:
-            # El reembolso ya se hizo, pero la suscripcion remota PUEDE
-            # SEGUIR COBRANDO. No ocultar esto: se persiste como trabajo
-            # pendiente, se conserva el id de suscripcion y la respuesta
-            # lleva advertencia explicita para cancelacion manual.
-            cancellation_error = str(exc)
-            logger.error(
-                "Stripe subscription cancel after refund error: %s", exc
+        # Pertenencia por contrato: si el cargo devuelto pertenece a una
+        # suscripcion ANTERIOR, no se cancela nada automaticamente; el
+        # acceso vigente de la clienta queda intacto y el contrato viejo
+        # sigue su propio trabajo de cancelacion pendiente (si existe).
+        target_sub = _resolve_subscription_for_charge(client, charge_id)
+        current_sub = (
+            (_record or {}).get("stripe_subscription_id") if user_id else None
+        )
+        if target_sub and current_sub and target_sub != current_sub:
+            historical_charge = True
+            logger.info(
+                "admin refund: cargo %s del contrato anterior %s; suscripcion "
+                "vigente %s sin tocar", charge_id, target_sub, current_sub,
             )
-        if user_id:
-            if cancellation_error is None:
-                # Listado + cancelacion confirmados (o lista vacia): no hay
-                # nada remoto que pueda seguir cobrando.
-                fields = {
-                    "status": "refunded",
-                    "stripe_subscription_id": None,
-                    "cancellation_pending": False,
-                    "pending_cancellation_sub_ids": [],
-                }
-                if canceled_subscriptions:
-                    fields["last_canceled_subscription_id"] = (
-                        canceled_subscriptions[-1]
-                    )
-                billing_store.upsert_record(user_id, **fields)
-            else:
-                # Cancelacion NO confirmada: conservar el id (sin el no hay
-                # forma de cancelar despues) y registrar el trabajo durable
-                # POR IDENTIFICADOR, para que una recontratacion posterior
-                # no lo descarte y el reintento sepa exactamente que cerrar.
-                fields = {
-                    "status": "refunded",
-                    "cancellation_pending": True,
-                }
-                prev_sub = (_record or {}).get("stripe_subscription_id")
-                if prev_sub:
-                    pending_ids = [
-                        s for s in ((_record or {}).get("pending_cancellation_sub_ids") or []) if s
-                    ]
-                    if prev_sub not in pending_ids:
-                        pending_ids.append(prev_sub)
-                    fields["pending_cancellation_sub_ids"] = pending_ids
-                billing_store.upsert_record(user_id, **fields)
+        else:
+            try:
+                active_subs = stripe.Subscription.list(
+                    customer=customer_id, status="active", limit=10
+                ).get("data", [])
+                for sub in active_subs:
+                    stripe.Subscription.cancel(sub["id"])
+                    canceled_subscriptions.append(sub["id"])
+            except stripe.error.StripeError as exc:
+                # El reembolso ya se hizo, pero la suscripcion remota PUEDE
+                # SEGUIR COBRANDO. No ocultar esto: se persiste como trabajo
+                # pendiente, se conserva el id de suscripcion y la respuesta
+                # lleva advertencia explicita para cancelacion manual.
+                cancellation_error = str(exc)
+                logger.error(
+                    "Stripe subscription cancel after refund error: %s", exc
+                )
+            if user_id:
+                if cancellation_error is None:
+                    # Listado + cancelacion confirmados (o lista vacia): no hay
+                    # nada remoto que pueda seguir cobrando.
+                    fields = {
+                        "status": "refunded",
+                        "stripe_subscription_id": None,
+                        "cancellation_pending": False,
+                        "pending_cancellation_sub_ids": [],
+                    }
+                    if canceled_subscriptions:
+                        fields["last_canceled_subscription_id"] = (
+                            canceled_subscriptions[-1]
+                        )
+                    billing_store.upsert_record(user_id, **fields)
+                else:
+                    # Cancelacion NO confirmada: conservar el id (sin el no hay
+                    # forma de cancelar despues) y registrar el trabajo durable
+                    # POR IDENTIFICADOR, para que una recontratacion posterior
+                    # no lo descarte y el reintento sepa exactamente que cerrar.
+                    fields = {
+                        "status": "refunded",
+                        "cancellation_pending": True,
+                    }
+                    prev_sub = (_record or {}).get("stripe_subscription_id")
+                    if prev_sub:
+                        pending_ids = [
+                            s for s in ((_record or {}).get("pending_cancellation_sub_ids") or []) if s
+                        ]
+                        if prev_sub not in pending_ids:
+                            pending_ids.append(prev_sub)
+                        fields["pending_cancellation_sub_ids"] = pending_ids
+                    billing_store.upsert_record(user_id, **fields)
 
     response: dict = {
         "refund_id": refund.get("id"),
@@ -1055,6 +1177,12 @@ async def admin_refund(
         "status": refund.get("status"),
         "canceled_subscriptions": canceled_subscriptions,
     }
+    if historical_charge:
+        response["warning"] = (
+            "El cargo pertenece a una suscripcion anterior de la clienta: "
+            "se reembolso el pago, pero NO se cancelo ninguna suscripcion "
+            "activa. El contrato anterior sigue su propio cierre pendiente."
+        )
     if cancellation_error:
         response["warning"] = (
             "El reembolso se creo, pero NO se pudo confirmar la cancelacion "
