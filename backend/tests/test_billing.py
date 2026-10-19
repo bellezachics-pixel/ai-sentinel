@@ -461,22 +461,26 @@ def test_admin_refund_no_admin_devuelve_403(client, auth_client, stripe_test):
 
 def test_admin_refund_motivo_invalido_devuelve_400(client, stripe_test):
     admin = _make_admin()
-    resp = client.post(
-        f"{BILLING}/admin/refund",
-        json={"payment_id": "ch_x", "reason": "sin_ganas"},
-        headers=admin["headers"],
-    )
+    # El retry de cancelaciones pendientes corre ANTES del chequeo del
+    # motivo: debe estar mockeado (sin red).
+    with patch("stripe.Subscription.list", return_value={"data": []}):
+        resp = client.post(
+            f"{BILLING}/admin/refund",
+            json={"payment_id": "ch_x", "reason": "sin_ganas"},
+            headers=admin["headers"],
+        )
     assert resp.status_code == 400
     assert resp.json()["detail"] == "motivo_reembolso_invalido"
 
 
 def test_admin_refund_sin_stripe_devuelve_503(client, no_stripe):
     admin = _make_admin()
-    resp = client.post(
-        f"{BILLING}/admin/refund",
-        json={"payment_id": "ch_x"},
-        headers=admin["headers"],
-    )
+    with patch("stripe.Subscription.list", return_value={"data": []}):
+        resp = client.post(
+            f"{BILLING}/admin/refund",
+            json={"payment_id": "ch_x"},
+            headers=admin["headers"],
+        )
     assert resp.status_code == 503
     assert resp.json()["detail"] == "pasarela_no_configurada"
 
@@ -494,6 +498,8 @@ def test_admin_refund_error_stripe_devuelve_502(client, stripe_test):
             "stripe.Refund.create",
             side_effect=stripe.error.StripeError("fallo_test"),
         ),
+        # El retry de pendientes corre antes del reembolso: sin red.
+        patch("stripe.Subscription.list", return_value={"data": []}),
     ):
         resp = client.post(
             f"{BILLING}/admin/refund",
@@ -525,6 +531,9 @@ def test_admin_refund_con_sesion_cs_resuelve_y_registra_localmente(
             "stripe.Refund.create",
             return_value={"id": "re_x", "amount": 1600, "status": "succeeded"},
         ),
+        # Reembolso total: lista suscripciones activas para cancelarlas.
+        patch("stripe.Subscription.list", return_value={"data": []}),
+        patch("stripe.Subscription.cancel", return_value={"id": "sub_x"}),
     ):
         resp = client.post(
             f"{BILLING}/admin/refund",

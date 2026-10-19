@@ -56,6 +56,9 @@ def normalize_public_http_url(raw_url: str) -> tuple[str | None, dict | None]:
             or ip.is_multicast
             or ip.is_reserved
             or ip.is_unspecified
+            # CGNAT (100.64/10): is_private es False en varias versiones de
+            # Python; misma red extra que ya bloquea _reject_non_public_ip.
+            or any(ip in net for net in _EXTRA_BLOCKED_NETWORKS)
         ):
             return None, _finding(
                 "ip privada bloqueada",

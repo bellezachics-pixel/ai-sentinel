@@ -14,6 +14,11 @@ Mapea user_id local -> datos de la suscripcion Stripe:
   "last_refund_at": str,        # ISO 8601 (ultimo reembolso registrado)
   "last_refund_amount": int,    # monto reembolsado en centavos
   "last_refund_id": str,        # re_... de Stripe
+  "last_event_created": int,    # timestamp del ultimo evento aplicado (anti-stale)
+  "cancellation_pending": bool, # cancelacion remota por confirmar (retry durable)
+  "last_canceled_subscription_id": str,  # ultima sub cancelada/reembolsada
+                                         # (distingue recontratacion legitima
+                                         # de reentrega tardia del evento viejo)
   "updated_at": str             # ISO 8601
 }
 

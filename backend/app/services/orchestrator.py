@@ -717,8 +717,16 @@ class AnalysisOrchestrator:
         else:
             recommendations.append("No se detectaron amenazas significativas.")
 
-        # Specific recommendations based on findings
-        finding_types = {f.get("type", "") for f in findings}
+        # Specific recommendations based on findings. Los types normalizados
+        # usan espacios ("credential harvesting"), pero el category/pattern
+        # original puede conservar el guion bajo ("credential_harvesting");
+        # se indexan ambas formas para no perder recomendaciones especificas.
+        finding_types: set[str] = set()
+        for f in findings:
+            for key in ("type", "category", "pattern_type", "pattern"):
+                value = f.get(key)
+                if value:
+                    finding_types.add(str(value).replace(" ", "_"))
         if "aitm_proxy" in finding_types or "tls_anomaly" in finding_types:
             recommendations.append("Posible proxy AiTM detectado. Verificar certificado TLS manualmente.")
         if "credential_harvesting" in finding_types:
@@ -786,6 +794,7 @@ class AnalysisOrchestrator:
         finding_type = (
             finding.get("type")
             or finding.get("pattern_type")
+            or finding.get("pattern")
             or finding.get("category")
             or "hallazgo"
         )

@@ -261,13 +261,30 @@ def test_evento_reciente_aplica_normal(monkeypatch):
 
 def test_estado_terminal_no_rebaja_a_activo(monkeypatch):
     billing = _billing_module()
-    _record, upserted = _setup_customer_record(monkeypatch, status="refunded")
+    record, upserted = _setup_customer_record(monkeypatch, status="refunded")
+    # El reembolso/cancelacion real deja memorizado el id terminal: una
+    # reentrega de ESA suscripcion no se disfraza de contratacion nueva.
+    record["last_canceled_subscription_id"] = "sub_1"
     billing._sync_subscription_event(
         {"customer": "cus_test", "id": "sub_1", "status": "active"},
-        event_created=9999,          # reciente, PERO el estado es terminal
+        event_created=9999,          # reciente, PERO es la suscripcion terminal
         event_type="customer.subscription.updated",
     )
     assert upserted == []
+
+
+def test_evento_sin_id_no_borra_suscripcion_guardada(monkeypatch):
+    billing = _billing_module()
+    record, upserted = _setup_customer_record(monkeypatch, status="active")
+    record["stripe_subscription_id"] = "sub_9"
+    billing._sync_subscription_event(
+        {"customer": "cus_test", "status": "active"},  # sin "id"
+        event_created=2000,
+        event_type="customer.subscription.updated",
+    )
+    assert len(upserted) == 1
+    assert "stripe_subscription_id" not in upserted[0]  # el id previo se conserva
+    assert upserted[0]["status"] == "active"
 
 
 # ============================================================
@@ -483,6 +500,39 @@ def test_misma_suscripcion_antigua_no_reactiva(monkeypatch):
         event_type="customer.subscription.updated",
     )
     assert upserted == []
+
+
+def test_reentrega_de_cancelada_no_aplica_con_id_perdido(monkeypatch):
+    """Tras un reembolso total el store ya no guarda el id de suscripcion;
+    sin ese ancla, last_canceled_subscription_id es lo que distingue una
+    reentrega tardia (mismo id cancelado -> ignora) de una contratacion
+    nueva (id distinto -> aplica)."""
+    billing = _billing_module()
+    record = {
+        "status": "refunded",
+        "stripe_customer_id": "cus_test",
+        "stripe_subscription_id": None,
+        "last_canceled_subscription_id": "sub_old",
+    }
+    upserted: list[dict] = []
+    _patch_customer_record(monkeypatch, record, upserted)
+
+    # Reentrega tardia de la suscripcion reembolsada: NO aplica.
+    billing._sync_subscription_event(
+        {"customer": "cus_test", "id": "sub_old", "status": "active"},
+        event_created=2000,
+        event_type="customer.subscription.updated",
+    )
+    assert upserted == []
+
+    # Contratacion nueva con otro id: SI aplica y otorga acceso.
+    billing._sync_subscription_event(
+        {"customer": "cus_test", "id": "sub_new", "status": "active"},
+        event_created=3000,
+        event_type="customer.subscription.updated",
+    )
+    assert upserted and upserted[0]["status"] == "active"
+    assert upserted[0]["stripe_subscription_id"] == "sub_new"
 
 
 def test_refund_fallo_cancelacion_advierte_y_deja_pendiente(monkeypatch):

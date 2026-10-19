@@ -289,7 +289,18 @@ def _record_refund_from_charge(charge: dict):
     }
     if amount > 0 and refunded >= amount:
         fields["status"] = "refunded"
+        previous_sub = (_record or {}).get("stripe_subscription_id")
+        if previous_sub:
+            # Se pierde el vinculo al borrar el id: memorizarlo para que una
+            # futura contratacion nueva aplique y una reentrega tardia de la
+            # suscripcion reembolsada no se disfrace de contratacion nueva.
+            fields["last_canceled_subscription_id"] = previous_sub
         fields["stripe_subscription_id"] = None
+        # La suscripcion remota pudo originarse fuera de nuestro admin
+        # (reembolso desde el dashboard de Stripe): si sigue activa, sigue
+        # cobrando. Pendiente durable para que _retry_pending_cancellations
+        # la cierre en el proximo reembolso administrativo.
+        fields["cancellation_pending"] = True
     billing_store.upsert_record(user_id, **fields)
 
 
@@ -335,12 +346,18 @@ def _sync_subscription_event(subscription: dict, event_created: int | None = Non
     current_status = ((record or {}).get("status") or "").lower()
     new_sub_id = subscription.get("id")
     saved_sub_id = (record or {}).get("stripe_subscription_id")
-    # Una suscripcion con ID distinto al guardado es una CONTRATACION
-    # NUEVA legitima (la clienta cancelo y volvio a contratar): debe
-    # reconciliar el estado y otorgar acceso, no quedar bloqueada por el
-    # estado terminal de la suscripcion anterior.
+    last_canceled_id = (record or {}).get("last_canceled_subscription_id")
+    # Una suscripcion con ID distinto al guardado (y distinto a la ultima
+    # cancelada/reembolsada) es una CONTRATACION NUEVA legitima (la clienta
+    # cancelo y volvio a contratar): debe reconciliar el estado y otorgar
+    # acceso, no quedar bloqueada por el estado terminal de la suscripcion
+    # anterior. El id cancelado se conserva precisamente para que una
+    # REENTREGA TARDIA de la suscripcion vieja no se disfrace de contratacion
+    # nueva cuando el store ya no guarda el id (reembolso total).
     is_new_subscription = bool(
-        new_sub_id and saved_sub_id and new_sub_id != saved_sub_id
+        new_sub_id
+        and new_sub_id != saved_sub_id
+        and new_sub_id != last_canceled_id
     )
 
     if _is_stale_event(record, event_created):
@@ -362,19 +379,27 @@ def _sync_subscription_event(subscription: dict, event_created: int | None = Non
         )
         return
 
-    billing_store.upsert_record(
-        user_id,
-        stripe_customer_id=customer_id,
-        stripe_subscription_id=new_sub_id,
-        status=subscription.get("status") or "none",
-        trial_end=_unix_to_iso(subscription.get("trial_end")),
-        current_period_end=_unix_to_iso(subscription.get("current_period_end")),
-        cancel_at_period_end=bool(subscription.get("cancel_at_period_end", False)),
-        last_event_created=event_created,
+    fields = {
+        "stripe_customer_id": customer_id,
+        "status": subscription.get("status") or "none",
+        "trial_end": _unix_to_iso(subscription.get("trial_end")),
+        "current_period_end": _unix_to_iso(subscription.get("current_period_end")),
+        "cancel_at_period_end": bool(subscription.get("cancel_at_period_end", False)),
+        "last_event_created": event_created,
         # La suscripcion nueva (o la cancelacion confirmada) resuelve
         # cualquier cancelacion pendiente anterior.
-        cancellation_pending=False,
-    )
+        "cancellation_pending": False,
+    }
+    if new_sub_id:
+        # Solo escribir el id cuando el evento lo trae: un evento sin id no
+        # debe borrar el vinculo de suscripcion que ya tenia el registro.
+        fields["stripe_subscription_id"] = new_sub_id
+        if new_status in ACCESS_BLOCKING_STATUSES:
+            # Estado terminal: memorizar el id cancelado/reembolsado para que
+            # una contratacion futura aplique y una reentrega tardia de ESTA
+            # suscripcion no se disfrace de contratacion nueva.
+            fields["last_canceled_subscription_id"] = new_sub_id
+    billing_store.upsert_record(user_id, **fields)
 
 
 def _handle_webhook_event(event: dict):
@@ -624,9 +649,12 @@ def _retry_pending_cancellations() -> None:
             ).get("data", [])
             for sub in active_subs:
                 stripe.Subscription.cancel(sub["id"])
-            billing_store.upsert_record(
-                user_id, stripe_subscription_id=None, cancellation_pending=False
-            )
+            fields = {"stripe_subscription_id": None, "cancellation_pending": False}
+            if active_subs:
+                # Memorizar la cancelada: una contratacion futura debe
+                # aplicar, y una reentrega tardia de esta suscripcion no.
+                fields["last_canceled_subscription_id"] = active_subs[-1]["id"]
+            billing_store.upsert_record(user_id, **fields)
             logger.info(
                 "Reintento de cancelacion resuelto para %s (%d suscripciones)",
                 user_id, len(active_subs),
@@ -728,12 +756,16 @@ async def admin_refund(
             if cancellation_error is None:
                 # Listado + cancelacion confirmados (o lista vacia): no hay
                 # nada remoto que pueda seguir cobrando.
-                billing_store.upsert_record(
-                    user_id,
-                    status="refunded",
-                    stripe_subscription_id=None,
-                    cancellation_pending=False,
-                )
+                fields = {
+                    "status": "refunded",
+                    "stripe_subscription_id": None,
+                    "cancellation_pending": False,
+                }
+                if canceled_subscriptions:
+                    fields["last_canceled_subscription_id"] = (
+                        canceled_subscriptions[-1]
+                    )
+                billing_store.upsert_record(user_id, **fields)
             else:
                 # Cancelacion NO confirmada: conservar el id (sin el no hay
                 # forma de cancelar despues) y marcar el pendiente durable.
