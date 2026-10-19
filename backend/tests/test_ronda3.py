@@ -314,6 +314,12 @@ def test_refund_total_cancela_suscripcion_activa(monkeypatch):
         billing, "_resolve_payment_to_charge",
         lambda client, pid: ("ch_test", "cus_test"),
     )
+    # Cargo sin factura resoluble (pago sin vinculo de suscripcion):
+    # aplica el cierre de activas del comportamiento vigente.
+    monkeypatch.setattr(
+        billing, "_resolve_subscription_for_charge",
+        lambda client, cid: (None, True),
+    )
     monkeypatch.setattr(billing, "get_stripe_client", lambda: MagicMock())
 
     from app.core import billing_store
@@ -548,6 +554,12 @@ def test_refund_fallo_cancelacion_advierte_y_deja_pendiente(monkeypatch):
     monkeypatch.setattr(
         billing, "_resolve_payment_to_charge",
         lambda client, pid: ("ch_test", "cus_test"),
+    )
+    # Cargo sin factura resoluble (pago sin vinculo de suscripcion):
+    # aplica el cierre de activas del comportamiento vigente.
+    monkeypatch.setattr(
+        billing, "_resolve_subscription_for_charge",
+        lambda client, cid: (None, True),
     )
     monkeypatch.setattr(billing, "get_stripe_client", lambda: MagicMock())
 

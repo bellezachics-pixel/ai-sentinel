@@ -266,9 +266,20 @@ def _resolve_subscription_from_invoice(invoice_id: Optional[str]) -> tuple[Optio
     Compartido por el webhook de reembolsos y el reembolso administrativo:
     la pertenencia por contrato debe ser la misma en ambas rutas. Sin
     resolucion NO se actua sobre el acceso vigente (mejor conservador).
+
+    Inicializa el cliente Stripe si hay pasarela configurada: tras un
+    reinicio del proceso `stripe.api_key` sigue en None hasta que otra
+    ruta la inicialice, y consultar sin inicializar haria fallar la
+    resolucion aunque la clave exista en la configuracion.
     """
     if not invoice_id:
         return None, True
+    if get_stripe_client() is None:
+        logger.warning(
+            "No se pudo resolver la factura %s: pasarela no configurada",
+            invoice_id,
+        )
+        return None, False
     try:
         invoice = stripe.Invoice.retrieve(invoice_id)
         return (invoice or {}).get("subscription") or None, True
@@ -319,7 +330,10 @@ def _record_refund_from_charge(charge: dict):
         if not resolved:
             # Sin evidencia del contrato NO se toca el acceso vigente:
             # mejor un reembolso registrado sin cierre automatico que
-            # cerrar por error el contrato nuevo de la clienta.
+            # cerrar por error el contrato nuevo de la clienta. La bandera
+            # durable exige reconciliacion manual (no se pierde el aviso
+            # aunque el evento ya quede deduplicado).
+            base_fields["refund_reconciliation_pending"] = True
             billing_store.upsert_record(user_id, **base_fields)
             return
         current_sub = (_record or {}).get("stripe_subscription_id")
@@ -1015,12 +1029,14 @@ async def admin_retry_cancellations(admin: UserInDB = Depends(require_admin)):
     return {"status": "ok", **summary}
 
 
-def _resolve_subscription_for_charge(client, charge_id: str) -> Optional[str]:
-    """Cargo -> factura -> suscripcion. None si no es resoluble.
+def _resolve_subscription_for_charge(client, charge_id: str) -> tuple[Optional[str], bool]:
+    """Cargo -> factura -> suscripcion. Devuelve (subscription_id, resoluble).
 
     Misma regla de pertenencia que el webhook de reembolsos: una
     devolucion administrativa de un cargo de una suscripcion ANTERIOR no
-    debe cancelar la suscripcion vigente de la clienta.
+    debe cancelar la suscripcion vigente de la clienta. (None, False)
+    significa consulta fallida: NO hay evidencia del contrato y la ruta
+    administrativa no debe operar sobre todo el customer por incertidumbre.
     """
     try:
         charge_obj = client.Charge.retrieve(charge_id)
@@ -1028,10 +1044,9 @@ def _resolve_subscription_for_charge(client, charge_id: str) -> Optional[str]:
         logger.warning(
             "No se pudo recuperar el cargo %s (%s)", charge_id, exc,
         )
-        return None
+        return None, False
     invoice_id = (charge_obj or {}).get("invoice")
-    sub_id, _ = _resolve_subscription_from_invoice(invoice_id)
-    return sub_id
+    return _resolve_subscription_from_invoice(invoice_id)
 
 
 @router.post("/admin/refund")
@@ -1105,16 +1120,31 @@ async def admin_refund(
     canceled_subscriptions: list[str] = []
     cancellation_error: str | None = None
     historical_charge = False
+    unresolved_charge = False
     if payload.amount is None and customer_id:
         # Pertenencia por contrato: si el cargo devuelto pertenece a una
         # suscripcion ANTERIOR, no se cancela nada automaticamente; el
         # acceso vigente de la clienta queda intacto y el contrato viejo
         # sigue su propio trabajo de cancelacion pendiente (si existe).
-        target_sub = _resolve_subscription_for_charge(client, charge_id)
+        target_sub, resoluble = _resolve_subscription_for_charge(client, charge_id)
         current_sub = (
             (_record or {}).get("stripe_subscription_id") if user_id else None
         )
-        if target_sub and current_sub and target_sub != current_sub:
+        if not resoluble:
+            # Sin evidencia del contrato NO se actua: nunca sustituir la
+            # incertidumbre por una operacion sobre todo el customer. El
+            # dinero ya fue devuelto; queda alerta durable de reconciliacion
+            # para que la propietaria cierre el contrato correcto.
+            unresolved_charge = True
+            if user_id:
+                billing_store.upsert_record(
+                    user_id, refund_reconciliation_pending=True,
+                )
+            logger.warning(
+                "admin refund: no se pudo resolver el contrato del cargo %s; "
+                "no se cancelo ninguna suscripcion", charge_id,
+            )
+        elif target_sub and current_sub and target_sub != current_sub:
             historical_charge = True
             logger.info(
                 "admin refund: cargo %s del contrato anterior %s; suscripcion "
@@ -1177,6 +1207,14 @@ async def admin_refund(
         "status": refund.get("status"),
         "canceled_subscriptions": canceled_subscriptions,
     }
+    if unresolved_charge:
+        response["warning"] = (
+            "El reembolso se creo, pero NO se pudo determinar a que "
+            "suscripcion pertenece el cargo (consulta fallida): no se "
+            "cancelo ninguna suscripcion. Reconciliacion pendiente "
+            "registrada; verificar en Stripe y cerrar el contrato "
+            "correspondiente manualmente."
+        )
     if historical_charge:
         response["warning"] = (
             "El cargo pertenece a una suscripcion anterior de la clienta: "

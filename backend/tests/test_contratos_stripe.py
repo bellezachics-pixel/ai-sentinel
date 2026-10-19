@@ -117,6 +117,7 @@ def test_reembolso_resuelto_de_contrato_anterior_conserva_su_pendiente(record, m
     # cancelacion se conserva hasta que Stripe confirme la cancelacion.
     record.update(pending_cancellation_sub_ids=["sub_old"],
                   cancellation_pending=True)
+    monkeypatch.setattr(billing, "get_stripe_client", lambda: billing.stripe)
     monkeypatch.setattr(
         billing.stripe.Invoice, "retrieve",
         lambda invoice_id: {"id": invoice_id, "subscription": "sub_old"},
@@ -143,6 +144,7 @@ def test_reembolso_resuelto_del_contrato_vigente_si_marca_reembolsado(record, mo
     # reembolso total si pasa la cuenta a refunded con trabajo durable.
     record.update(stripe_subscription_id="sub_new",
                   last_canceled_subscription_id=None)
+    monkeypatch.setattr(billing, "get_stripe_client", lambda: billing.stripe)
     monkeypatch.setattr(
         billing.stripe.Invoice, "retrieve",
         lambda invoice_id: {"id": invoice_id, "subscription": "sub_new"},
@@ -284,3 +286,76 @@ def test_endpoint_retry_inicializa_cliente_y_reporta(record, monkeypatch):
     assert result["canceled"] == 1
     assert result["remaining"] == 0
     assert result["status"] == "ok"
+
+
+# ============================================================
+# Validacion Codex del commit 80802b3 (ramas de error)
+# ============================================================
+
+def test_admin_no_cancela_si_no_puede_resolver_la_factura(record, monkeypatch):
+    # La consulta de la factura falla temporalmente: el reembolso se crea,
+    # pero NO se cancela ninguna suscripcion y el acceso vigente queda
+    # intacto, con alerta durable de reconciliacion.
+    monkeypatch.setattr(billing, "get_stripe_client", lambda: billing.stripe)
+    monkeypatch.setattr(billing.stripe.Charge, "retrieve",
+                        lambda cid: {"id": cid, "customer": "cus_offline", "invoice": "in_old"})
+
+    def _invoice_falla(iid):
+        raise stripe_lib.error.StripeError("fallo temporal de consulta")
+
+    monkeypatch.setattr(billing.stripe.Invoice, "retrieve", _invoice_falla)
+    monkeypatch.setattr(billing.stripe.Refund, "create",
+                        lambda **kw: {"id": "re_offline", "amount": 1600, "status": "succeeded"})
+    canceled = []
+    monkeypatch.setattr(billing.stripe.Subscription, "list",
+                        lambda **kw: {"data": [{"id": "sub_new", "status": "active"}]})
+    monkeypatch.setattr(billing.stripe.Subscription, "cancel",
+                        lambda sid: canceled.append(sid))
+    payload = billing.AdminRefundRequest(payment_id="ch_old",
+                                         reason="requested_by_customer")
+    result = asyncio.run(billing.admin_refund(payload, admin=MagicMock()))
+    assert canceled == [], {"canceled": canceled}
+    assert record["status"] == "active", record
+    assert record["refund_reconciliation_pending"] is True
+    assert "warning" in result
+
+
+def test_webhook_inicializa_cliente_para_resolver_factura_tras_reinicio(record, monkeypatch):
+    # Tras un reinicio, settings tiene la clave pero stripe.api_key sigue
+    # en None: el helper de resolucion debe inicializar el cliente antes
+    # de consultar, no tratarlo como factura no resoluble.
+    from app.core import billing as billing_core
+
+    monkeypatch.setattr(billing_core.settings, "STRIPE_SECRET_KEY",
+                        "sk_test_offline_placeholder")
+    monkeypatch.setattr(billing_core, "_stripe_ready", False)
+    monkeypatch.setattr(billing.stripe, "api_key", None)
+    monkeypatch.setattr(
+        billing.stripe.Invoice, "retrieve",
+        lambda iid: {"id": iid, "subscription": "sub_new"},
+    )
+    billing._record_refund_from_charge({
+        "id": "ch_new", "customer": "cus_offline", "invoice": "in_new",
+        "amount": 1600, "amount_refunded": 1600,
+    })
+    assert billing.stripe.api_key == "sk_test_offline_placeholder"
+    assert record["status"] == "refunded", record
+    assert record["pending_cancellation_sub_ids"] == ["sub_new"]
+
+
+def test_webhook_marca_reconciliacion_si_consulta_falla_con_pasarela(record, monkeypatch):
+    # Con pasarela configurada pero consulta fallida, el reembolso queda
+    # registrado con alerta durable (no se pierde el aviso aunque el
+    # evento quede deduplicado) y el acceso vigente no se toca.
+    monkeypatch.setattr(billing, "get_stripe_client", lambda: billing.stripe)
+
+    def _invoice_falla(iid):
+        raise stripe_lib.error.StripeError("stripe caido")
+
+    monkeypatch.setattr(billing.stripe.Invoice, "retrieve", _invoice_falla)
+    billing._record_refund_from_charge({
+        "id": "ch_new", "customer": "cus_offline", "invoice": "in_new",
+        "amount": 1600, "amount_refunded": 1600,
+    })
+    assert record["status"] == "active", record
+    assert record["refund_reconciliation_pending"] is True

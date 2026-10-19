@@ -26,6 +26,11 @@ Mapea user_id local -> datos de la suscripcion Stripe:
                                          # que el pendiente se conserva
                                          # por id y se resuelve solo cuando
                                          # Stripe confirma ese cierre
+  "refund_reconciliation_pending": bool, # alerta durable: un reembolso se
+                                         # registro sin poder vincularlo a
+                                         # su contrato (consulta fallida);
+                                         # exige revision/reconciliacion
+                                         # manual de la propietaria
   "updated_at": str             # ISO 8601
 }
 
