@@ -15,7 +15,12 @@ def normalize_public_http_url(raw_url: str) -> tuple[str | None, dict | None]:
     if "://" not in url:
         url = f"https://{url}"
 
-    parsed = urlparse(url)
+    # urlparse puede lanzar ValueError con IPv6 mal formada (ej. "https://[::1")
+    try:
+        parsed = urlparse(url)
+    except ValueError:
+        return None, _finding("url invalida", "La URL tiene un formato invalido.")
+
     if parsed.scheme not in {"http", "https"}:
         return None, _finding(
             "esquema bloqueado",
@@ -32,12 +37,16 @@ def normalize_public_http_url(raw_url: str) -> tuple[str | None, dict | None]:
             "Se bloqueo el acceso a localhost para prevenir SSRF.",
         )
 
+    # Decision segura ante cualquier error de parsing/resolucion
+    # (REVISION-GUARDIA-FLOW #17, residual): puerto fuera de rango
+    # (parsed.port lanza ValueError), dominio demasiado largo, errores de
+    # codificacion Unicode o fallos de DNS. Nada de esto debe dar 500.
     try:
         addresses = {
             result[4][0]
             for result in socket.getaddrinfo(hostname, parsed.port, type=socket.SOCK_STREAM)
         }
-    except socket.gaierror:
+    except (socket.gaierror, socket.herror, UnicodeError, ValueError, OSError):
         return None, _finding(
             "dns no resuelto",
             "No se pudo resolver el dominio; se omitieron conexiones externas.",
@@ -183,7 +192,10 @@ def validate_public_network_target(target: str) -> str:
         raise ValueError("Objetivo de red requerido")
 
     if "://" in raw:
-        parsed = urlparse(raw)
+        try:
+            parsed = urlparse(raw)
+        except ValueError:
+            raise ValueError("Objetivo de red invalido")
         host = parsed.hostname
     else:
         # Strip any path and port (IPv6 literals in brackets handled below)
@@ -217,7 +229,7 @@ def validate_public_network_target(target: str) -> str:
             result[4][0]
             for result in socket.getaddrinfo(host, None, type=socket.SOCK_STREAM)
         }
-    except socket.gaierror:
+    except (socket.gaierror, socket.herror, UnicodeError, OSError):
         raise ValueError(f"No se pudo resolver el objetivo: {host}")
 
     if not addresses:

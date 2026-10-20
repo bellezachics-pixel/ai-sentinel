@@ -117,8 +117,16 @@ def test_bruteforce_bloquea_solo_ip_atacante():
     from fastapi.testclient import TestClient
     from app.core.security import rate_limit_store
 
-    with TestClient(app, client=("45.155.20.9", 50001)) as atacante, \
-            TestClient(app, client=("185.220.0.9", 50002)) as victima:
+    # Starlette 1.9 elimino el kwarg `client=` de TestClient; se simula la
+    # IP de origen sobreescribiendo scope["client"] con un wrapper ASGI.
+    def cliente_con_ip(ip: str, puerto: int):
+        async def app_con_ip(scope, receive, send):
+            scope["client"] = (ip, puerto)
+            await app(scope, receive, send)
+        return TestClient(app_con_ip)
+
+    with cliente_con_ip("45.155.20.9", 50001) as atacante, \
+            cliente_con_ip("185.220.0.9", 50002) as victima:
         _limpiar_limites()
         # Crear la cuenta de la victima desde su propia IP
         resp = victima.post(
