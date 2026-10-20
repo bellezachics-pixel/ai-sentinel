@@ -91,8 +91,8 @@ async def analyze_url(
         return result.model_dump()
     except HTTPException:
         raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=500, detail="No se pudo completar la solicitud.") from None
 
 
 @router.post("/analyze/email")
@@ -112,8 +112,8 @@ async def analyze_email(
         return result.model_dump()
     except HTTPException:
         raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=500, detail="No se pudo completar la solicitud.") from None
 
 
 @router.post("/analyze/message")
@@ -127,8 +127,8 @@ async def analyze_message(
         return result.model_dump()
     except HTTPException:
         raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=500, detail="No se pudo completar la solicitud.") from None
 
 
 @router.post("/analyze/qr")
@@ -152,8 +152,8 @@ async def analyze_qr(
         return result.model_dump()
     except HTTPException:
         raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=500, detail="No se pudo completar la solicitud.") from None
 
 
 @router.post("/analyze/media")
@@ -178,8 +178,8 @@ async def analyze_media(
         return result.model_dump()
     except HTTPException:
         raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=500, detail="No se pudo completar la solicitud.") from None
 
 
 @router.post("/analyze/file")
@@ -208,8 +208,8 @@ async def analyze_file(
         return result.model_dump()
     except HTTPException:
         raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=500, detail="No se pudo completar la solicitud.") from None
 
 
 @router.post("/analyze/network")
@@ -235,8 +235,8 @@ async def analyze_network(
         return result.model_dump()
     except HTTPException:
         raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=500, detail="No se pudo completar la solicitud.") from None
 
 
 @router.post("/analyze/identity")
@@ -252,8 +252,8 @@ async def analyze_identity(
         return result.model_dump()
     except HTTPException:
         raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=500, detail="No se pudo completar la solicitud.") from None
 
 
 @router.post("/threat-intel/lookup")
@@ -269,8 +269,8 @@ async def threat_intel_lookup(
         return {"indicator": request.indicator, "results": results}
     except HTTPException:
         raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=500, detail="No se pudo completar la solicitud.") from None
 
 
 @router.post("/chat", response_model=ChatResponse)
@@ -283,8 +283,8 @@ async def chat(
         return await sentinel_chat.ask(request.message, request.history)
     except HTTPException:
         raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=500, detail="No se pudo completar la solicitud.") from None
 
 
 @router.get("/dashboard/stats")
@@ -297,8 +297,8 @@ async def get_dashboard_stats(
         return stats
     except HTTPException:
         raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=500, detail="No se pudo completar la solicitud.") from None
 
 
 @router.get("/integrations/status")
