@@ -66,6 +66,8 @@ services:
         sync: false
       # Stripe MODO TEST únicamente. Jamás claves live. sync:false para que
       # el dashboard (donde Gabiotita pega las claves) no se pise al sincronizar.
+      - key: GOOGLE_WEB_RISK_API_KEY
+        sync: false
       - key: STRIPE_SECRET_KEY
         sync: false
       - key: STRIPE_WEBHOOK_SECRET

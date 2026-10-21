@@ -23,7 +23,7 @@ services:
     region: oregon
     rootDir: backend
     buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1
+    startCommand: python scripts/start_antivirus_staging.py
     healthCheckPath: /api/v1/health
     # FREE: sin bloque disk (el disco persistente exige instancia pagos).
     envVars:
@@ -46,6 +46,8 @@ services:
       - key: ALLOWED_ORIGINS
         value: "https://guardiaflow-staging-frontend.onrender.com"
       # Stripe MODO TEST. Gabiotita las pega en el dashboard; nunca en el repo.
+      - key: GOOGLE_WEB_RISK_API_KEY
+        sync: false
       - key: STRIPE_SECRET_KEY
         sync: false
       - key: STRIPE_WEBHOOK_SECRET
