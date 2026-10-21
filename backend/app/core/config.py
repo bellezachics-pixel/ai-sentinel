@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     URLSCAN_API_KEY: Optional[str] = None
     ABUSEIPDB_API_KEY: Optional[str] = None
     HIBP_API_KEY: Optional[str] = None
+    # Google Web Risk: reputacion de URLs (Safe Browsing). Uso comercial
+    # permitido; 100k consultas/mes gratis. Sustituto legal de la API
+    # publica de VirusTotal, cuyos terminos prohiben uso comercial.
+    WEBRISK_API_KEY: Optional[str] = None
 
     # OpenAI
     OPENAI_API_KEY: Optional[str] = None

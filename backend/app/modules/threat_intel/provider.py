@@ -1,8 +1,12 @@
 """
 Guardia Flow Threat Intelligence Provider Module
 
-Integrates with VirusTotal, Urlscan.io, and AbuseIPDB APIs.
+Integrates with VirusTotal, Google Web Risk, Urlscan.io, and AbuseIPDB.
 Gracefully handles missing API keys and service unavailability.
+
+Nota: la API publica (gratuita) de VirusTotal prohibe el uso comercial.
+Para produccion el proveedor principal de reputacion de URLs es
+Google Web Risk (uso comercial permitido, 100k consultas/mes gratis).
 """
 
 from __future__ import annotations
@@ -21,10 +25,12 @@ try:
     VIRUSTOTAL_API_KEY: str | None = getattr(settings, "VIRUSTOTAL_API_KEY", None)
     URLSCAN_API_KEY: str | None = getattr(settings, "URLSCAN_API_KEY", None)
     ABUSEIPDB_API_KEY: str | None = getattr(settings, "ABUSEIPDB_API_KEY", None)
+    WEBRISK_API_KEY: str | None = getattr(settings, "WEBRISK_API_KEY", None)
 except (ImportError, AttributeError):
     VIRUSTOTAL_API_KEY = None
     URLSCAN_API_KEY = None
     ABUSEIPDB_API_KEY = None
+    WEBRISK_API_KEY = None
 
 # Indicator type constants
 INDICATOR_URL = "url"
@@ -34,8 +40,19 @@ INDICATOR_HASH = "hash"
 
 # API base URLs
 VT_BASE = "https://www.virustotal.com/api/v3"
+WEBRISK_BASE = "https://webrisk.googleapis.com/v1"
 URLSCAN_BASE = "https://urlscan.io/api/v1"
 ABUSEIPDB_BASE = "https://api.abuseipdb.com/api/v2"
+
+# Puntaje por tipo de amenaza reportada por Web Risk (el mas grave manda).
+WEBRISK_THREAT_SCORES: dict[str, int] = {
+    "MALWARE": 100,
+    "SOCIAL_ENGINEERING": 90,
+    "POTENTIALLY_HARMFUL_APPLICATION": 85,
+    "UNWANTED_SOFTWARE": 70,
+    "SOCIAL_ENGINEERING_EXTENDED_COVERAGE": 60,
+}
+WEBRISK_THREAT_TYPES: tuple[str, ...] = tuple(WEBRISK_THREAT_SCORES.keys())
 
 
 class ThreatIntelProvider:
@@ -46,10 +63,12 @@ class ThreatIntelProvider:
         virustotal_key: str | None = None,
         urlscan_key: str | None = None,
         abuseipdb_key: str | None = None,
+        webrisk_key: str | None = None,
     ) -> None:
         self.vt_key = virustotal_key or VIRUSTOTAL_API_KEY
         self.urlscan_key = urlscan_key or URLSCAN_API_KEY
         self.abuseipdb_key = abuseipdb_key or ABUSEIPDB_API_KEY
+        self.webrisk_key = webrisk_key or WEBRISK_API_KEY
 
     @staticmethod
     def _detect_indicator_type(indicator: str) -> str:
@@ -165,6 +184,93 @@ class ThreatIntelProvider:
             result["error"] = "Could not connect to VirusTotal"
         except Exception as exc:
             result["error"] = f"VirusTotal query failed: {str(exc)}"
+
+        return result
+
+    # ---- Google Web Risk ----
+
+    async def query_webrisk(self, url: str) -> dict[str, Any]:
+        """
+        Check a URL against Google Web Risk (Safe Browsing lists).
+
+        Detects phishing (SOCIAL_ENGINEERING), malware and unwanted
+        software. Usage: 100k free lookups/month, commercial use allowed.
+        """
+        result: dict[str, Any] = {
+            "provider": "google_webrisk",
+            "indicator": url,
+            "available": False,
+            "data": {},
+            "error": None,
+        }
+
+        if not self.webrisk_key:
+            result["error"] = "Google Web Risk API key not configured"
+            return result
+
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                params: list[tuple[str, str]] = [
+                    ("key", self.webrisk_key),
+                    ("uri", url),
+                ]
+                for threat_type in WEBRISK_THREAT_TYPES:
+                    params.append(("threatTypes", threat_type))
+
+                response = await client.get(
+                    f"{WEBRISK_BASE}/uris:search",
+                    params=params,
+                )
+
+                if response.status_code == 200:
+                    payload = response.json()
+                    threat = payload.get("threat") or {}
+                    threat_types = threat.get("threatTypes") or []
+
+                    if threat_types:
+                        score = max(
+                            WEBRISK_THREAT_SCORES.get(t, 50) for t in threat_types
+                        )
+                        result["available"] = True
+                        result["data"] = {
+                            "found": True,
+                            "threat_types": threat_types,
+                            "score": score,
+                            "is_malicious": True,
+                            "expire_time": threat.get("expireTime"),
+                        }
+                    else:
+                        # Sin amenaza conocida: respuesta vacia o solo expireTime.
+                        result["available"] = True
+                        result["data"] = {
+                            "found": False,
+                            "threat_types": [],
+                            "score": 0,
+                            "is_malicious": False,
+                        }
+
+                elif response.status_code == 400:
+                    result["error"] = (
+                        "Google Web Risk rejected the request (check API enablement)"
+                    )
+                elif response.status_code == 403:
+                    result["error"] = (
+                        "Google Web Risk access denied (API not enabled or "
+                        "billing not configured)"
+                    )
+                elif response.status_code == 429:
+                    result["error"] = "Google Web Risk quota exceeded"
+                else:
+                    result["error"] = (
+                        f"Google Web Risk returned status {response.status_code}"
+                    )
+
+        except httpx.TimeoutException:
+            result["error"] = "Google Web Risk request timed out"
+        except httpx.ConnectError:
+            result["error"] = "Could not connect to Google Web Risk"
+        except Exception as exc:
+            result["error"] = f"Google Web Risk query failed: {str(exc)}"
 
         return result
 
@@ -396,6 +502,15 @@ class ThreatIntelProvider:
             )
         )
 
+        # Google Web Risk for URLs and domains (uso comercial permitido)
+        if indicator_type in (INDICATOR_URL, INDICATOR_DOMAIN):
+            url_to_check = indicator
+            if indicator_type == INDICATOR_DOMAIN:
+                url_to_check = f"https://{indicator}"
+            tasks.append(
+                asyncio.create_task(self.query_webrisk(url_to_check))
+            )
+
         # Urlscan.io for URLs and domains
         if indicator_type in (INDICATOR_URL, INDICATOR_DOMAIN):
             url_to_scan = indicator
@@ -450,6 +565,11 @@ async def query_virustotal(
 async def query_urlscan(url: str) -> dict[str, Any]:
     """Module-level convenience function."""
     return await threat_intel_provider.query_urlscan(url)
+
+
+async def query_webrisk(url: str) -> dict[str, Any]:
+    """Module-level convenience function."""
+    return await threat_intel_provider.query_webrisk(url)
 
 
 async def query_abuseipdb(ip: str) -> dict[str, Any]:

@@ -55,6 +55,10 @@ def get_integrations_status() -> dict[str, dict[str, bool | str]]:
             "configured": _configured(settings.URLSCAN_API_KEY),
             "provider": "urlscan.io",
         },
+        "google_webrisk": {
+            "configured": _configured(settings.WEBRISK_API_KEY),
+            "provider": "Google Web Risk",
+        },
         "abuseipdb": {
             "configured": _configured(settings.ABUSEIPDB_API_KEY),
             "provider": "AbuseIPDB",

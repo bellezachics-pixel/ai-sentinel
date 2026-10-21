@@ -81,6 +81,11 @@ services:
         sync: false
       - key: VIRUSTOTAL_API_KEY
         sync: false
+      # Google Web Risk (reputacion de URLs, uso comercial permitido;
+      # 100k consultas/mes gratis). Sustituto legal de la API publica de
+      # VirusTotal, que prohibe uso comercial.
+      - key: WEBRISK_API_KEY
+        sync: false
       - key: GOOGLE_FACT_CHECK_API_KEY
         sync: false
       - key: GOOGLE_OAUTH_CLIENT_ID
