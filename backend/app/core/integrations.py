@@ -15,6 +15,14 @@ def get_integrations_status() -> dict[str, dict[str, bool | str]]:
     )
 
     return {
+        "google_web_risk": {
+            "configured": _configured(settings.GOOGLE_WEB_RISK_API_KEY),
+            "provider": "Google Web Risk Lookup",
+        },
+        "file_antivirus": {
+            "configured": _configured(settings.CLAMAV_HOST),
+            "provider": "ClamAV privado",
+        },
         "openai_chat": {
             "configured": has_openai,
             "provider": "OpenAI",

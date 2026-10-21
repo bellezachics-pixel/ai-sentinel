@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     URLSCAN_API_KEY: Optional[str] = None
     ABUSEIPDB_API_KEY: Optional[str] = None
     HIBP_API_KEY: Optional[str] = None
+    GOOGLE_WEB_RISK_API_KEY: Optional[str] = None
+    CLAMAV_HOST: Optional[str] = None
+    CLAMAV_PORT: int = 3310
 
     # OpenAI
     OPENAI_API_KEY: Optional[str] = None

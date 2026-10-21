@@ -37,7 +37,7 @@ export default function FileAnalyzer() {
       const data = await api.analyzeFile(file);
       setResult(data);
     } catch {
-      setError("No se pudo analizar el archivo.");
+      setError("El análisis antivirus no se completó. No se puede confirmar la seguridad del archivo; intenta de nuevo más tarde.");
     } finally {
       setLoading(false);
     }
@@ -60,7 +60,7 @@ export default function FileAnalyzer() {
         sha256?: string;
         size_bytes?: number;
         extension?: string;
-        virustotal_available?: boolean;
+        antivirus?: { status?: string; available?: boolean };
       }
     | undefined;
 
@@ -158,9 +158,13 @@ export default function FileAnalyzer() {
                     <p className="text-xs text-slate-300 font-mono break-all">{fileMeta.sha256 || "N/A"}</p>
                   </div>
                   <div className="rounded-lg bg-[#0a0e1a]/50 p-3">
-                    <p className="text-[10px] uppercase text-slate-500 mb-1">Reputacion</p>
+                    <p className="text-[10px] uppercase text-slate-500 mb-1">Antivirus</p>
                     <p className="text-xs text-slate-300">
-                      VirusTotal {fileMeta.virustotal_available ? "consultado" : "no configurado"}
+                      {fileMeta.antivirus?.status === "detected"
+                        ? "Amenaza detectada por ClamAV"
+                        : fileMeta.antivirus?.status === "no_detection"
+                          ? "ClamAV: sin detecciones conocidas"
+                          : "Análisis antivirus no completado"}
                     </p>
                     <p className="text-xs text-slate-500 mt-1">
                       {typeof fileMeta.size_bytes === "number" ? formatFileSize(fileMeta.size_bytes) : "N/A"}

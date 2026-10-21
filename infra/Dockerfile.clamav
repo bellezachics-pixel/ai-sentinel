@@ -1,0 +1,4 @@
+FROM clamav/clamav@sha256:b5fffca589275b71a4c610afc69d32a8d9c6cf4454c6d06529ddb08da17d0c30
+COPY clamd.conf /etc/clamav/clamd.conf
+ENV TZ=UTC
+RUN sed -i s/localhost/127.0.0.1/g /usr/local/bin/clamdcheck.sh

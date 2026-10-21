@@ -1,0 +1,20 @@
+# Existing approved Hostinger VPS only; no paid Render service.
+name: guardiaflow-antivirus-staging
+services:
+  clamav:
+    build:
+      context: .
+      dockerfile: Dockerfile.clamav
+    init: true
+    restart: "no"
+    mem_limit: 4g
+    cpus: 1.0
+    pids_limit: 128
+    ports:
+      - "127.0.0.1:3310:3310"
+    environment:
+      TZ: UTC
+    volumes:
+      - signatures:/var/lib/clamav
+volumes:
+  signatures:

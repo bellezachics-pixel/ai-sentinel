@@ -14,6 +14,7 @@ Recorrido funcional del orquestador SIN red externa (todo mockado):
 """
 import asyncio
 import io
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -85,6 +86,14 @@ def no_network(monkeypatch):
     monkeypatch.setattr(orchestrator, "_header_analyzer", _FakeHeaderAnalyzer())
     monkeypatch.setattr(orchestrator, "_network_analyzer", _FakeNetworkAnalyzer())
     monkeypatch.setattr(orchestrator, "_identity_client", _FakeHIBPClient())
+    # These tests validate normalization/business flow, not engine availability.
+    # Real error/availability contracts are in test_replacement_engines.py.
+    monkeypatch.setattr('app.modules.threat_intel.web_risk.query_web_risk', AsyncMock(return_value={
+        'provider': 'google_web_risk', 'available': True, 'data': {'score': 0, 'is_malicious': False},
+    }))
+    monkeypatch.setattr('app.services.file_antivirus.file_antivirus.scan', AsyncMock(return_value={
+        'provider': 'clamav', 'available': True, 'status': 'no_detection',
+    }))
 
 
 def _qr_analyzer_with_payload(payload: str):

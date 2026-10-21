@@ -146,6 +146,14 @@ class AnalysisOrchestrator:
         analysis_id = str(uuid.uuid4())[:8]
         safe_url, safety_finding = await asyncio.to_thread(normalize_public_http_url, url)
 
+        from fastapi import HTTPException
+        from app.modules.threat_intel.web_risk import query_web_risk
+        web_risk = None
+        if safe_url and not safety_finding:
+            web_risk = await query_web_risk(safe_url)
+            if not web_risk.get('available'):
+                raise HTTPException(503, 'No se pudo completar la comprobación de amenazas del enlace. Inténtalo más tarde.')
+
         url_result = await self.url_analyzer.analyze_url(safe_url or url)
         header_result = {"score": 0, "findings": []}
         network_result = {"score": 0, "findings": []}
@@ -170,6 +178,9 @@ class AnalysisOrchestrator:
                     network_result = results[1]
                 if len(results) > 2 and not isinstance(results[2], Exception):
                     intel_results = results[2]
+
+        if web_risk:
+            intel_results.append(web_risk)
 
         # Content analysis (fetch page content) - SSRF-safe
         content_result = {"score": 0, "findings": []}
@@ -197,6 +208,10 @@ class AnalysisOrchestrator:
             network_score=network_result.get("score", 0) if deep_scan else None,
             threat_intel_scores=intel_scores,
         )
+        if web_risk and web_risk['data'].get('is_malicious'):
+            from app.models.schemas import RiskLevel
+            risk_score.total = 100
+            risk_score.level = RiskLevel.CRITICAL
 
         # Aggregate findings (normalized to always include type/description/severity)
         all_findings = self._collect_findings([
@@ -205,6 +220,11 @@ class AnalysisOrchestrator:
             ("header_analysis", header_result),
             ("network_analysis", network_result),
         ])
+
+        if web_risk and web_risk['data'].get('is_malicious'):
+            all_findings.append({'type': 'enlace peligroso', 'severity': 'critical',
+                'source': 'google_web_risk',
+                'description': 'Google Web Risk detectó amenazas conocidas en este enlace. No lo abras.'})
 
         # Build threat intel results
         threat_intel_models = [
@@ -231,7 +251,8 @@ class AnalysisOrchestrator:
             recommendations=recommendations,
             metadata={
                 "deep_scan": deep_scan,
-                "modules_executed": ["url", "content", "headers"]
+                "web_risk_checked": bool(web_risk and web_risk.get('available')),
+                "modules_executed": ["url", "content", "headers"] + (["web_risk"] if web_risk else [])
                 + (["network", "threat_intel"] if deep_scan else []),
             },
         )
@@ -397,19 +418,33 @@ class AnalysisOrchestrator:
         sha256 = hashlib.sha256(file_data).hexdigest()
         extension = os.path.splitext(filename.lower())[1].lstrip(".") or "unknown"
 
+        from fastapi import HTTPException
+        from app.services.file_antivirus import file_antivirus
+        antivirus = await file_antivirus.scan(file_data)
+        if not antivirus.get('available'):
+            raise HTTPException(503, 'El análisis antivirus no se completó. El archivo no ha sido declarado seguro. Inténtalo más tarde.')
+
         local_findings = self._analyze_file_locally(filename, extension, size, content_type)
-        vt_results = await self.threat_intel.query_all(sha256, "hash")
+        # ClamAV scans bytes directly; no public third-party submission.
+        vt_results = []
         vt_findings, vt_score = self._findings_from_virustotal(vt_results)
 
         file_score = max(self._score_file_findings(local_findings), vt_score)
         risk_score = risk_engine.calculate_risk(content_score=file_score)
 
+        if antivirus['status'] == 'detected':
+            from app.models.schemas import RiskLevel
+            risk_score.total = 100
+            risk_score.level = RiskLevel.CRITICAL
+
         findings = local_findings + vt_findings
+        findings.append({'type': 'antivirus',
+            'severity': 'critical' if antivirus['status'] == 'detected' else 'low',
+            'source': 'clamav', 'description':
+                'El motor antivirus detectó una amenaza. No abras el archivo.'
+                if antivirus['status'] == 'detected' else
+                'El motor antivirus no detectó amenazas conocidas. Esto no garantiza que el archivo sea seguro.'})
         recommendations = self._generate_recommendations(risk_score, findings)
-        if not any(r.get("available") for r in vt_results):
-            recommendations.append(
-                "Configura VIRUSTOTAL_API_KEY para consultar reputacion real por hash."
-            )
 
         result = AnalysisResult(
             id=analysis_id,
@@ -425,6 +460,7 @@ class AnalysisOrchestrator:
                 "extension": extension,
                 "size_bytes": size,
                 "sha256": sha256,
+                "antivirus": antivirus,
                 "virustotal_available": any(r.get("available") for r in vt_results),
                 "virustotal_results": vt_results,
             },

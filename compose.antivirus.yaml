@@ -1,0 +1,29 @@
+# Local isolated engine. No host port or public ingress. Deployment requires
+# sufficient RAM, refreshed signatures and an image digest pinned at release.
+services:
+  backend:
+    environment:
+      CLAMAV_HOST: clamav.internal
+      CLAMAV_PORT: "3310"
+      GOOGLE_WEB_RISK_API_KEY: ${GOOGLE_WEB_RISK_API_KEY:-}
+    depends_on:
+      clamav.internal:
+        condition: service_healthy
+  clamav.internal:
+    build:
+      context: ./infra
+      dockerfile: Dockerfile.clamav
+    mem_limit: 4g
+    cpus: 1.0
+    environment:
+      TZ: UTC
+    volumes:
+      - clamav-signatures:/var/lib/clamav
+    healthcheck:
+      test: ["CMD", "clamdscan", "--ping=1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 180s
+volumes:
+  clamav-signatures:
