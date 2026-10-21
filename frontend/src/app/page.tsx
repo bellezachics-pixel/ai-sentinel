@@ -115,7 +115,7 @@ const TOOLS = [
   {
     icon: BrainCircuit,
     title: "Inteligencia de amenazas",
-    text: "Conexión con bases colectivas de amenazas (VirusTotal, urlscan, AbuseIPDB). En preparación: te avisaremos en tu panel cuando esté activa.",
+    text: "Consultamos si un enlace o dirección ya fue reportada como peligrosa por redes colectivas de seguridad (Google Safe Browsing, urlscan.io y AbuseIPDB). Está activa desde tu primera prueba.",
   },
   {
     icon: Sparkles,

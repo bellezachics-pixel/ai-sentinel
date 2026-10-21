@@ -35,7 +35,7 @@ export default function PrivacyPage() {
         },
         {
           heading: "Terceros",
-          body: "Los pagos se procesan a través de Stripe, que recibe los datos necesarios para cobrar tu suscripción conforme a su propia política de privacidad. Las consultas de inteligencia de amenazas (VirusTotal, urlscan, AbuseIPDB, cuando están configuradas) envían a esos proveedores únicamente el indicador que estás buscando (por ejemplo, la URL o la dirección IP concreta). El asistente de IA puede procesar tus preguntas con un proveedor de modelos de lenguaje configurado por el operador del servicio.",
+          body: "Los pagos se procesan a través de Stripe, que recibe los datos necesarios para cobrar tu suscripción conforme a su propia política de privacidad. Las consultas de inteligencia de amenazas (Google Web Risk, urlscan.io, AbuseIPDB, cuando están configuradas) envían a esos proveedores únicamente el indicador que estás buscando (por ejemplo, la URL o la dirección IP concreta). El asistente de IA puede procesar tus preguntas con un proveedor de modelos de lenguaje configurado por el operador del servicio.",
         },
         {
           heading: "Cookies y caché de la app",
