@@ -56,6 +56,12 @@ services:
         sync: false
       - key: ADMIN_PASSWORD
         sync: false
+      # Google Web Risk (reputacion de URLs; uso comercial permitido,
+      # 100k consultas/mes gratis). Sustituto legal de la API publica de
+      # VirusTotal, que prohibe uso comercial. Nombre segun candidato
+      # codex/guardiaflow-v1-antivirus-staging (GOOGLE_WEB_RISK_API_KEY).
+      - key: GOOGLE_WEB_RISK_API_KEY
+        sync: false
 
   - type: web
     name: guardiaflow-staging-frontend
