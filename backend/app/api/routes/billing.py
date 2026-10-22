@@ -70,6 +70,31 @@ def _unix_to_iso(value) -> Optional[str]:
         return None
 
 
+def _latest_period_end(values):
+    valid = []
+    for value in values:
+        if _unix_to_iso(value) is not None:
+            valid.append(int(value))
+    return max(valid) if valid else None
+
+
+def _subscription_period_end(subscription: dict):
+    # Las versiones recientes de Stripe guardan el periodo en cada item.
+    return subscription.get("current_period_end") or _latest_period_end(
+        item.get("current_period_end")
+        for item in (subscription.get("items") or {}).get("data", [])
+    )
+
+
+def _invoice_period_end(invoice: dict):
+    # period_end de la factura cierra la ventana de facturacion previa;
+    # el servicio que se acaba de pagar termina en el periodo de sus lineas.
+    return _latest_period_end(
+        (line.get("period") or {}).get("end")
+        for line in (invoice.get("lines") or {}).get("data", [])
+    ) or invoice.get("period_end")
+
+
 def _frontend_billing_url(path: str) -> str:
     return f"{settings.FRONTEND_URL.rstrip('/')}/billing/{path}"
 
@@ -502,7 +527,7 @@ def _sync_subscription_event(subscription: dict, event_created: int | None = Non
         "stripe_customer_id": customer_id,
         "status": subscription.get("status") or "none",
         "trial_end": _unix_to_iso(subscription.get("trial_end")),
-        "current_period_end": _unix_to_iso(subscription.get("current_period_end")),
+        "current_period_end": _unix_to_iso(_subscription_period_end(subscription)),
         "cancel_at_period_end": bool(subscription.get("cancel_at_period_end", False)),
         "last_event_created": event_created,
     }
@@ -625,7 +650,7 @@ def _handle_webhook_event(event: dict):
                 "stripe_customer_id": customer_id,
                 "last_payment_at": datetime.now(timezone.utc).isoformat(),
                 "last_payment_amount": data.get("amount_paid"),
-                "current_period_end": _unix_to_iso(data.get("period_end")),
+                "current_period_end": _unix_to_iso(_invoice_period_end(data)),
             }
             if inv_sub:
                 fields["stripe_subscription_id"] = inv_sub
@@ -741,7 +766,7 @@ async def list_payments(user: UserInDB = Depends(require_auth)):
             "id": charge.get("id"),
             "amount": charge.get("amount"),
             "currency": charge.get("currency"),
-            "status": charge.get("status"),
+            "status": "refunded" if charge.get("refunded") else charge.get("status"),
             "description": charge.get("description"),
             "date": _unix_to_iso(charge.get("created")),
             "receipt_url": charge.get("receipt_url"),
